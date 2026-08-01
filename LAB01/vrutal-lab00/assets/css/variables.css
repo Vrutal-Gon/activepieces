@@ -1,0 +1,133 @@
+/* ==========================================================================
+   VRUTAL LAB01
+   Design Tokens
+   Version: 0.1.0
+   ========================================================================== */
+
+:root {
+
+    /* ==========================================================
+       COLORS
+       ========================================================== */
+
+    --vr-color-background: #0B0B0F;
+    --vr-color-surface: #15151A;
+    --vr-color-surface-light: #1F1F26;
+
+    --vr-color-text: #F5F5F7;
+    --vr-color-text-secondary: #A1A1AA;
+
+    --vr-color-border: #27272A;
+
+    --vr-color-primary: #F97316;
+    --vr-color-primary-hover: #EA580C;
+
+    --vr-color-secondary: #6D28D9;
+    --vr-color-secondary-hover: #5B21B6;
+
+    --vr-color-success: #22C55E;
+    --vr-color-warning: #EAB308;
+    --vr-color-error: #EF4444;
+
+    /* ==========================================================
+       TYPOGRAPHY
+       ========================================================== */
+
+    --vr-font-heading:
+        "Space Grotesk",
+        sans-serif;
+
+    --vr-font-body:
+        "Inter",
+        sans-serif;
+
+    /* ==========================================================
+       FONT SIZES
+       ========================================================== */
+
+    --vr-text-xs: .75rem;
+    --vr-text-sm: .875rem;
+    --vr-text-md: 1rem;
+    --vr-text-lg: 1.125rem;
+    --vr-text-xl: 1.25rem;
+    --vr-text-2xl: 1.5rem;
+    --vr-text-3xl: 2rem;
+    --vr-text-4xl: 3rem;
+    --vr-text-5xl: 4rem;
+
+    /* ==========================================================
+       FONT WEIGHTS
+       ========================================================== */
+
+    --vr-weight-light: 300;
+    --vr-weight-normal: 400;
+    --vr-weight-medium: 500;
+    --vr-weight-semibold: 600;
+    --vr-weight-bold: 700;
+
+    /* ==========================================================
+       LINE HEIGHT
+       ========================================================== */
+
+    --vr-line-tight: 1.15;
+    --vr-line-normal: 1.6;
+    --vr-line-loose: 1.9;
+
+    /* ==========================================================
+       SPACING
+       Sistema 8px
+       ========================================================== */
+
+    --vr-space-0: 0;
+
+    --vr-space-1: .25rem;
+    --vr-space-2: .5rem;
+    --vr-space-3: .75rem;
+
+    --vr-space-4: 1rem;
+    --vr-space-5: 1.5rem;
+    --vr-space-6: 2rem;
+    --vr-space-7: 3rem;
+    --vr-space-8: 4rem;
+    --vr-space-9: 6rem;
+    --vr-space-10: 8rem;
+
+    /* ==========================================================
+       LAYOUT
+       ========================================================== */
+
+    --vr-container: 1320px;
+
+    --vr-header-height: 90px;
+
+    /* ==========================================================
+       BORDER RADIUS
+       ========================================================== */
+
+    --vr-radius-sm: 6px;
+    --vr-radius-md: 12px;
+    --vr-radius-lg: 18px;
+    --vr-radius-xl: 28px;
+    --vr-radius-full: 999px;
+
+    /* ==========================================================
+       SHADOWS
+       ========================================================== */
+
+    --vr-shadow-sm:
+        0 2px 8px rgba(0,0,0,.08);
+
+    --vr-shadow-md:
+        0 10px 30px rgba(0,0,0,.18);
+
+    --vr-shadow-lg:
+        0 25px 60px rgba(0,0,0,.35);
+
+    /* ==========================================================
+       TRANSITIONS
+       ========================================================== */
+
+    --vr-transition:
+        all .25s ease;
+
+}
