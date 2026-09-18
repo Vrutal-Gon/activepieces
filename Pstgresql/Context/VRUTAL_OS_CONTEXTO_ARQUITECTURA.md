@@ -240,8 +240,7 @@ Bucket de Storage: `client-files` (privado). Convención de ruta propuesta: `rep
 - **Rotación de `sync_cron_token`**: sin procedimiento definido.
 
 **Sync:**
-- **Inserción fila a fila corregida (18 sep)**: `pushToTenant()` ahora hace 1 upsert en bloque + 1 disable en bloque por tabla (flows/reports/kpis), no N awaits secuenciales. Ver sección 6.
-- **Sigue sin escalar en un eje**: la Edge Function todavía recorre los tenants en serie (`for` con `await` por tenant), aunque cada tenant individual ya es rápido. No es un problema con 1 cliente; rediseñar (paralelizar con límite de concurrencia) antes de tener varios clientes reales en el mismo cron.
+- **"No escala" resuelto (18 sep), en ambos ejes**: `pushToTenant()` hace 1 upsert en bloque + 1 disable en bloque por tabla (flows/reports/kpis) en vez de fila a fila, y la Edge Function ahora invoca a todos los tenants en paralelo (`Promise.all`, un `catch` y un log por tenant) en vez de un `for` secuencial. Versión 5 desplegada y verificada: `status_code 200`, sin timeout, mismos conteos que antes del cambio. Sin límite de concurrencia explícito — no hace falta con el número de clientes de hoy; si la lista de tenants crece mucho, añadir un tope antes de que sea un problema real, no antes.
 - `report_key`/`kpi_key`: referencia blanda hasta que haya reportes/KPIs en el catálogo.
 
 **Panel Vrutal-lab:**
