@@ -254,7 +254,8 @@ Bucket de Storage: `client-files` (privado). Convención de ruta propuesta: `rep
 - **`time_weight_pct`**: sin poblar; se mide en auditoría real, no se estima.
 - **Roles nuevos** (Ventas, Compras, Finanzas, RRHH): catálogo de tareas importado, sin ficha `job_role` completa.
 - **Webhooks entrantes a Activepieces**: para producción, dominio propio o túnel.
-- **Discrepancia en doc Data Entry Clerk**: el resumen decía 8 tareas con intervención humana pero solo 2 estaban marcadas; revisar.
+- **Discrepancia en doc Data Entry Clerk**: el resumen decía 8 tareas con intervención humana pero solo 2 estaban marcadas; revisar. **No confundir con el bug de 18 sep de abajo** — este sigue sin resolver, requiere el documento fuente original para saber cuáles 6 tareas más debían llevar `effect_classification = 'irreversible'`.
+- **18 sep: 4 tareas de SDR estaban mal enlazadas a Data Entry Clerk — corregido.** `TSK-001284/1285/1288/1289` (captura de lead, agenda, alta de contacto/oportunidad en HubSpot) formaban parte del flujo de 7 pasos del SDR pero estaban en `catalog.job_role_task` bajo `data_entry_clerk`, y lo mismo en `tenant_specialist_flow` (la tabla que de verdad sincroniza al cliente). Movidas a `sdr` en ambas tablas (migraciones `fix_sdr_tasks_mislinked_to_data_entry_clerk` y `fix_sdr_tenant_specialist_flow_mislinked_to_data_entry_clerk`), sync re-disparado y verificado: las 4 quedan `enabled` bajo `sdr` en `catalog_flow_ro` del cliente, las filas viejas bajo `data_entry_clerk` quedan `disabled` (soft-delete, comportamiento esperado del sync). **Nota de producto:** una tarea no es exclusiva de un rol — varios roles pueden compartir la misma tarea vía `job_role_task` (D-13). Cada una de estas tareas es, en la práctica, un mini-flujo de Activepieces pendiente de programar.
 
 ---
 
