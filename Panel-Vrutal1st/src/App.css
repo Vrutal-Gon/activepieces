@@ -542,3 +542,13 @@ td.row-actions {
   gap: 0.4rem;
   justify-content: flex-end;
 }
+
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #6d9bf7;
+  cursor: pointer;
+  font-size: inherit;
+  text-decoration: underline;
+}

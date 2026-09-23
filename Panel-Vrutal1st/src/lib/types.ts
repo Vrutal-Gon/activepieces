@@ -102,3 +102,55 @@ export interface TaskComponentRow {
   role_in_task: ComponentRoleInTask;
   is_default: boolean;
 }
+
+export interface Tenant {
+  id: string;
+  name: string;
+  legal_name: string | null;
+  status: string;
+  industry: string | null;
+  size_employees: number | null;
+  email: string | null;
+  phone: string | null;
+  website: string | null;
+  country: string | null;
+  region: string | null;
+  is_internal: boolean;
+  data_plane_status: string | null;
+}
+
+export interface SystemOption {
+  id: string;
+  system_category: string;
+  name: string;
+  version: string | null;
+  connection_notes: string | null;
+  docs_url: string | null;
+}
+
+export interface TenantStackChoice {
+  system_category: string;
+  system_option_id: string;
+  system_name: string;
+  version: string | null;
+  notes: string | null;
+}
+
+export interface TenantSpecialistRow {
+  id: string;
+  job_role_key: string;
+  job_role_version: number;
+  status: TenantSpecialistStatus;
+  contracted_at: string;
+  notes: string | null;
+}
+
+export interface Provider {
+  id: string;
+  name: string;
+  category: string;
+  pricing_model: string | null;
+  unit_cost_est: number | null;
+  notes: string | null;
+  docs_url: string | null;
+}

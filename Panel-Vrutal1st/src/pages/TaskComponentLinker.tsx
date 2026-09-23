@@ -47,9 +47,20 @@ export function TaskComponentLinker({ initialTask, roleContext, onBack }: TaskCo
   const [classification, setClassification] = useState<TaskRoleContext | null>(null);
   const [savingClassification, setSavingClassification] = useState(false);
 
+  const [isSuperadmin, setIsSuperadmin] = useState(false);
+  const [editingComponentId, setEditingComponentId] = useState<string | null>(null);
+  const [editComponentForm, setEditComponentForm] = useState<{
+    name: string;
+    comp_type: string;
+    owner: string;
+    runtime: string;
+    repo_ref: string;
+    maturity: ComponentMaturity;
+    target_system: string;
+  } | null>(null);
+
   const [showNewComponent, setShowNewComponent] = useState(false);
   const [newComponent, setNewComponent] = useState({
-    id: '',
     name: '',
     comp_type: 'activepieces_flow',
     owner: '',
@@ -61,6 +72,10 @@ export function TaskComponentLinker({ initialTask, roleContext, onBack }: TaskCo
 
   useEffect(() => {
     loadComponents();
+    supabase.rpc('is_superadmin').then(({ data, error }) => {
+      if (error) setError(error.message);
+      else setIsSuperadmin(!!data);
+    });
   }, []);
 
   async function loadComponents() {
@@ -194,7 +209,6 @@ export function TaskComponentLinker({ initialTask, roleContext, onBack }: TaskCo
   async function createComponent(e: FormEvent) {
     e.preventDefault();
     const { error } = await supabase.rpc('catalog_create_component', {
-      p_id: newComponent.id,
       p_name: newComponent.name,
       p_comp_type: newComponent.comp_type,
       p_owner: newComponent.owner,
@@ -208,7 +222,6 @@ export function TaskComponentLinker({ initialTask, roleContext, onBack }: TaskCo
       return;
     }
     setNewComponent({
-      id: '',
       name: '',
       comp_type: 'activepieces_flow',
       owner: '',
@@ -219,6 +232,59 @@ export function TaskComponentLinker({ initialTask, roleContext, onBack }: TaskCo
     });
     setShowNewComponent(false);
     loadComponents();
+  }
+
+  function startEditComponent(componentId: string) {
+    const full = allComponents.find((c) => c.id === componentId);
+    if (!full) return;
+    setEditingComponentId(componentId);
+    setEditComponentForm({
+      name: full.name,
+      comp_type: full.comp_type,
+      owner: full.owner,
+      runtime: full.runtime || '',
+      repo_ref: full.repo_ref || '',
+      maturity: full.maturity,
+      target_system: full.target_system || '',
+    });
+  }
+
+  async function saveComponentEdit() {
+    if (!editingComponentId || !editComponentForm) return;
+    const { error } = await supabase.rpc('catalog_update_component', {
+      p_id: editingComponentId,
+      p_name: editComponentForm.name,
+      p_comp_type: editComponentForm.comp_type,
+      p_owner: editComponentForm.owner,
+      p_runtime: editComponentForm.runtime || null,
+      p_repo_ref: editComponentForm.repo_ref || null,
+      p_maturity: editComponentForm.maturity,
+      p_target_system: editComponentForm.target_system || null,
+    });
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setEditingComponentId(null);
+    setEditComponentForm(null);
+    loadComponents();
+    if (selectedTask) {
+      loadCatalogComponents(selectedTask.id);
+      if (roleContext) loadRoleComponents(selectedTask.id, roleContext.jobRoleId);
+    }
+  }
+
+  async function deleteComponentGlobal(componentId: string) {
+    const { error } = await supabase.rpc('catalog_delete_component', { p_id: componentId });
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    loadComponents();
+    if (selectedTask) {
+      loadCatalogComponents(selectedTask.id);
+      if (roleContext) loadRoleComponents(selectedTask.id, roleContext.jobRoleId);
+    }
   }
 
   const roleComponentKeys = new Set(roleComponents.map((c) => `${c.component_id}:${c.role_in_task}`));
@@ -391,29 +457,102 @@ export function TaskComponentLinker({ initialTask, roleContext, onBack }: TaskCo
               </tr>
             </thead>
             <tbody>
-              {catalogComponents.map((c) => (
-                <tr key={`${c.component_id}:${c.role_in_task}`}>
-                  <td>{c.component_name}</td>
-                  <td>{c.comp_type}</td>
-                  <td>{c.target_system || '—'}</td>
-                  <td>{c.maturity}</td>
-                  <td>{c.role_in_task}</td>
-                  <td className="row-actions">
-                    {roleContext && (
+              {catalogComponents.map((c) =>
+                editingComponentId === c.component_id && editComponentForm ? (
+                  <tr key={`${c.component_id}:${c.role_in_task}`}>
+                    <td>
+                      <input
+                        type="text"
+                        value={editComponentForm.name}
+                        onChange={(e) => setEditComponentForm({ ...editComponentForm, name: e.target.value })}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        value={editComponentForm.comp_type}
+                        onChange={(e) =>
+                          setEditComponentForm({ ...editComponentForm, comp_type: e.target.value })
+                        }
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        value={editComponentForm.target_system}
+                        onChange={(e) =>
+                          setEditComponentForm({ ...editComponentForm, target_system: e.target.value })
+                        }
+                      />
+                    </td>
+                    <td>
+                      <select
+                        value={editComponentForm.maturity}
+                        onChange={(e) =>
+                          setEditComponentForm({
+                            ...editComponentForm,
+                            maturity: e.target.value as ComponentMaturity,
+                          })
+                        }
+                      >
+                        {MATURITY_OPTIONS.map((o) => (
+                          <option key={o} value={o}>
+                            {o}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>{c.role_in_task}</td>
+                    <td className="row-actions">
+                      <button onClick={saveComponentEdit}>Guardar</button>
                       <button
                         className="secondary"
-                        disabled={roleComponentKeys.has(`${c.component_id}:${c.role_in_task}`)}
-                        onClick={() => linkRoleComponent(c.component_id, c.role_in_task)}
+                        onClick={() => {
+                          setEditingComponentId(null);
+                          setEditComponentForm(null);
+                        }}
                       >
-                        Usar en este rol
+                        Cancelar
                       </button>
-                    )}
-                    <button className="remove" onClick={() => unlinkComponent(c.component_id, c.role_in_task)}>
-                      Quitar
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={`${c.component_id}:${c.role_in_task}`}>
+                    <td>{c.component_name}</td>
+                    <td>{c.comp_type}</td>
+                    <td>{c.target_system || '—'}</td>
+                    <td>{c.maturity}</td>
+                    <td>{c.role_in_task}</td>
+                    <td className="row-actions">
+                      {roleContext && (
+                        <button
+                          className="secondary"
+                          disabled={roleComponentKeys.has(`${c.component_id}:${c.role_in_task}`)}
+                          onClick={() => linkRoleComponent(c.component_id, c.role_in_task)}
+                        >
+                          Usar en este rol
+                        </button>
+                      )}
+                      {isSuperadmin && (
+                        <>
+                          <button className="secondary" onClick={() => startEditComponent(c.component_id)}>
+                            Editar
+                          </button>
+                          <button className="remove" onClick={() => deleteComponentGlobal(c.component_id)}>
+                            Eliminar
+                          </button>
+                        </>
+                      )}
+                      <button
+                        className="remove"
+                        onClick={() => unlinkComponent(c.component_id, c.role_in_task)}
+                      >
+                        Quitar
+                      </button>
+                    </td>
+                  </tr>
+                ),
+              )}
               {catalogComponents.length === 0 && (
                 <tr>
                   <td colSpan={6} className="empty">
@@ -457,12 +596,6 @@ export function TaskComponentLinker({ initialTask, roleContext, onBack }: TaskCo
 
           {showNewComponent && (
             <form className="new-component-form" onSubmit={createComponent}>
-              <input
-                placeholder="id (ej. ap-flow-lead-capture)"
-                value={newComponent.id}
-                onChange={(e) => setNewComponent({ ...newComponent, id: e.target.value })}
-                required
-              />
               <input
                 placeholder="Nombre"
                 value={newComponent.name}
