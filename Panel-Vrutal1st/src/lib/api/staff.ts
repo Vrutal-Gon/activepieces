@@ -1,6 +1,6 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from '../supabaseClient';
-import type { PlatformRole, StaffIdentity, StaffMember, Tenant, TenantOverview, TenantSpecialistRow } from '../types';
+import type { PlatformRole, StaffIdentity, StaffMember, TenantOverview } from '../types';
 import { isArrayOf, isObj, isStr, isStrArray, isStrOrNull, isVoid } from '../guards';
 import { ApiError, rpc } from './client';
 
@@ -33,26 +33,6 @@ const isTenantOverview = (v: unknown): v is TenantOverview =>
   isStrOrNull(v.account_manager_profile_id) &&
   isStrOrNull(v.account_manager_name);
 
-const isTenant = (v: unknown): v is Tenant =>
-  isObj(v) &&
-  isStr(v.id) &&
-  isStr(v.name) &&
-  isStr(v.status) &&
-  typeof v.is_internal === 'boolean' &&
-  isStrOrNull(v.account_manager_profile_id);
-
-const SPECIALIST_STATUSES: readonly string[] = ['contracted', 'paused', 'cancelled'];
-
-const isTenantSpecialistRow = (v: unknown): v is TenantSpecialistRow =>
-  isObj(v) &&
-  isStr(v.id) &&
-  isStr(v.job_role_key) &&
-  typeof v.job_role_version === 'number' &&
-  isStr(v.status) &&
-  SPECIALIST_STATUSES.includes(v.status) &&
-  isStr(v.contracted_at) &&
-  isStrOrNull(v.notes);
-
 const isPlatformRole = (v: unknown): v is PlatformRole =>
   isObj(v) && isStr(v.key) && isStr(v.name) && isStrArray(v.permission_keys);
 
@@ -77,16 +57,6 @@ export function setTenantAccountManager(tenantId: string, profileId: string | nu
     { p_tenant_id: tenantId, p_profile_id: profileId },
     isVoid,
   );
-}
-
-/** El servidor devuelve 42501 si el cliente no está en la cartera de quien llama. */
-export async function getTenant(tenantId: string, signal?: AbortSignal): Promise<Tenant | null> {
-  const rows = await rpc('staff_get_tenant', { p_tenant_id: tenantId }, isArrayOf(isTenant), signal);
-  return rows[0] ?? null;
-}
-
-export function listTenantSpecialists(tenantId: string, signal?: AbortSignal) {
-  return rpc('staff_list_tenant_specialists', { p_tenant_id: tenantId }, isArrayOf(isTenantSpecialistRow), signal);
 }
 
 export function listPlatformRoles(signal?: AbortSignal) {

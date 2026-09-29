@@ -23,10 +23,14 @@ export function useAsyncData<T>(load: (signal: AbortSignal) => Promise<T>) {
     return () => ctrl.abort();
   }, [load, nonce]);
 
+  /** Vuelve a cargar mostrando "Cargando…" (p. ej. tras un error). */
   const reload = useCallback(() => {
     setState({ status: 'loading' });
     setNonce((n) => n + 1);
   }, []);
 
-  return { state, reload };
+  /** Vuelve a cargar manteniendo los datos en pantalla hasta que llegan los nuevos (tras guardar). */
+  const refresh = useCallback(() => setNonce((n) => n + 1), []);
+
+  return { state, reload, refresh };
 }

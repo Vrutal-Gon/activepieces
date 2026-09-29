@@ -15,10 +15,57 @@ import { Compositions } from './pages/Compositions';
 import { ProviderCatalog } from './pages/ProviderCatalog';
 import { SetNewPasswordForm } from './pages/SetNewPasswordForm';
 import { StaffTeam } from './pages/StaffTeam';
+import { PendingPage } from './pages/PendingPage';
 import { SystemCatalog } from './pages/SystemCatalog';
 import { TaskComponentLinker, type TaskRoleContext } from './pages/TaskComponentLinker';
 import type { TaskSummary } from './lib/types';
 import './App.css';
+
+// Secciones del diseño aprobado que aún no tienen fuente de datos.
+const PENDING_SECTIONS = [
+  {
+    path: 'incidencias',
+    eyebrow: 'Operación',
+    title: 'Incidencias',
+    source: 'Detectadas por el sistema a partir del latido de los VPS (VPS sin respuesta, pieces que fallan). Se podrán enlazar a tickets.',
+  },
+  {
+    path: 'tickets',
+    eyebrow: 'Operación',
+    title: 'Tickets',
+    source: 'Los tickets viven en client_ticket de cada cliente. Se agregarán aquí vía Edge Function.',
+  },
+  {
+    path: 'flota',
+    eyebrow: 'Operación',
+    title: 'Flota VPS',
+    source: 'Estado de cada VPS a partir de su latido (LAB08 cap. 13). El aprovisionamiento aún es manual.',
+  },
+  {
+    path: 'aprobaciones',
+    eyebrow: 'Operación',
+    title: 'Aprobaciones bloqueadas',
+    source: 'Aprobaciones de más de 24 h sin firmar, detectadas por el latido en la base de cada cliente.',
+  },
+  {
+    path: 'tareas',
+    eyebrow: 'Catálogo',
+    title: 'Tareas',
+    source: 'Biblioteca de tareas del catálogo (catalog.task). Pantalla pendiente de construir; los datos ya existen.',
+  },
+  {
+    path: 'catalogo-kpis',
+    eyebrow: 'Catálogo',
+    title: 'KPIs y reportes',
+    source: 'Definiciones de reportes y KPIs por rol (catalog.report_definition, kpi_definition). Pantalla pendiente; los datos ya existen.',
+  },
+  {
+    path: 'auditoria',
+    eyebrow: 'Administración',
+    title: 'Auditoría',
+    source: 'Registro de acciones del staff de Vrutal. Falta crear la tabla de auditoría en Vrutal1st.',
+  },
+];
 
 interface ComponentsPreselection {
   task: TaskSummary;
@@ -77,10 +124,10 @@ function App() {
     content = (
       <Routes>
         <Route element={<AppShell email={session.user.email ?? ''} onSignOut={signOut} />}>
-          <Route index element={<Navigate to="/clientes" replace />} />
+          <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="clientes" element={<ClientsRoute />} />
-          <Route path="clientes/:tenantId" element={<ClientDetailRoute />} />
+          <Route path="clientes/:tenantId/:tab?" element={<ClientDetailRoute />} />
           <Route path="roles" element={<RolesRoute />} />
           <Route path="roles/:roleKey" element={<RoleDetailRoute onOpenComponents={openComponentsForTask} />} />
           <Route path="componentes" element={<ComponentsRoute preselection={preselection} />} />
@@ -89,7 +136,10 @@ function App() {
           <Route path="sistemas" element={<SystemsRoute />} />
           <Route path="proveedores" element={<ProviderCatalog />} />
           <Route path="equipo" element={<StaffTeam />} />
-          <Route path="*" element={<Navigate to="/clientes" replace />} />
+          {PENDING_SECTIONS.map((p) => (
+            <Route key={p.path} path={p.path} element={<PendingPage eyebrow={p.eyebrow} title={p.title} source={p.source} />} />
+          ))}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>
     );
@@ -110,12 +160,13 @@ function ClientsRoute() {
 }
 
 function ClientDetailRoute() {
-  const { tenantId = '' } = useParams();
+  const { tenantId = '', tab } = useParams();
   const navigate = useNavigate();
   return (
     <ClientPanel
+      key={tenantId}
       tenantId={tenantId}
-      onBack={() => navigate('/clientes')}
+      tab={tab}
       onOpenRole={(key) => navigate(`/roles/${encodeURIComponent(key)}`)}
     />
   );

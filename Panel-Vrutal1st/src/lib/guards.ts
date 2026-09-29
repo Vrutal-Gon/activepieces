@@ -6,6 +6,9 @@ export const isObj = (v: unknown): v is Record<string, unknown> =>
 
 export const isStr = (v: unknown): v is string => typeof v === 'string';
 export const isStrOrNull = (v: unknown): v is string | null => v === null || typeof v === 'string';
+export const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+export const isNumOrNull = (v: unknown): v is number | null => v === null || isNum(v);
+
 export const isStrArray = (v: unknown): v is string[] => Array.isArray(v) && v.every(isStr);
 
 export const isArrayOf =

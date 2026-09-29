@@ -103,22 +103,51 @@ export interface TaskComponentRow {
   is_default: boolean;
 }
 
-export interface Tenant {
+export interface TenantDetail {
   id: string;
   name: string;
   legal_name: string | null;
+  tax_id: string | null;
   status: string;
   industry: string | null;
   size_employees: number | null;
   email: string | null;
   phone: string | null;
   website: string | null;
-  country: string | null;
+  address_line: string | null;
+  city: string | null;
+  postal_code: string | null;
   region: string | null;
+  country: string | null;
   is_internal: boolean;
   data_plane_status: string | null;
+  holded_contact_id: string | null;
+  supabase_project_ref: string | null;
+  supabase_project_name: string | null;
+  supabase_project_region: string | null;
   account_manager_profile_id: string | null;
+  created_at: string;
+  /** Lo calcula el servidor (permiso tenants.write). Solo UX: la RPC de edición lo vuelve a comprobar. */
+  can_edit: boolean;
 }
+
+/** Campos editables de la ficha (staff_update_tenant). */
+export type TenantEditable = Pick<
+  TenantDetail,
+  | 'name'
+  | 'legal_name'
+  | 'tax_id'
+  | 'industry'
+  | 'size_employees'
+  | 'email'
+  | 'phone'
+  | 'website'
+  | 'address_line'
+  | 'city'
+  | 'postal_code'
+  | 'region'
+  | 'country'
+>;
 
 export interface SystemOption {
   id: string;
@@ -137,13 +166,29 @@ export interface TenantStackChoice {
   notes: string | null;
 }
 
-export interface TenantSpecialistRow {
+export interface TenantSpecialistDetail {
   id: string;
   job_role_key: string;
+  job_role_name: string | null;
   job_role_version: number;
+  /** Última versión 'active' del rol en el catálogo; si es mayor que job_role_version, va atrasado. */
+  latest_active_version: number | null;
   status: TenantSpecialistStatus;
   contracted_at: string;
   notes: string | null;
+  flows_enabled: number;
+  flows_total: number;
+}
+
+export interface TenantReportingItem {
+  kind: 'report' | 'kpi';
+  job_role_key: string;
+  report_key: string;
+  item_key: string;
+  name: string;
+  description: string | null;
+  /** null = disponible en el catálogo pero no activado para este cliente. */
+  status: string | null;
 }
 
 export interface Provider {
@@ -263,4 +308,29 @@ export interface PlatformRole {
   key: string;
   name: string;
   permission_keys: string[];
+}
+
+export interface TenantFlow {
+  specialist_id: string;
+  job_role_key: string;
+  task_code: string;
+  statement: string;
+  task_version: number;
+  autonomy_level: string;
+  status: string;
+}
+
+/** Fila del dashboard: lo que el plano de control ya sabe de cada cliente. */
+export interface FleetRow {
+  tenant_id: string;
+  name: string;
+  status: string;
+  is_internal: boolean;
+  data_plane_status: string | null;
+  account_manager_profile_id: string | null;
+  account_manager_name: string | null;
+  specialists_active: number;
+  specialists_paused: number;
+  specialists_behind: number;
+  flows_enabled: number;
 }

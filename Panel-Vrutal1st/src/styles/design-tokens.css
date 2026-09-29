@@ -33,10 +33,12 @@
   /* Tipografía */
   --font-sans: 'Inter', system-ui, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+  --text-2xs: 0.625rem;
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-md: 0.9375rem;
   --text-lg: 1.25rem;
+  --text-stat: 1.75rem;
   --text-h1: clamp(1.375rem, 1.2rem + 0.8vw, 1.75rem);
   --leading: 1.5;
 
