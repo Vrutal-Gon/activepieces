@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import type { Provider } from '../lib/types';
+import { ExternalLink } from '../components/ExternalLink';
 
 type EditForm = Pick<Provider, 'name' | 'category' | 'pricing_model' | 'unit_cost_est' | 'notes' | 'docs_url'>;
 
@@ -188,13 +189,7 @@ export function ProviderCatalog() {
                     <td>{p.unit_cost_est ?? '—'}</td>
                     <td>{p.notes || '—'}</td>
                     <td>
-                      {p.docs_url ? (
-                        <a href={p.docs_url} target="_blank" rel="noreferrer">
-                          Link
-                        </a>
-                      ) : (
-                        '—'
-                      )}
+                      <ExternalLink url={p.docs_url} label="Link" />
                     </td>
                     <td className="row-actions">
                       {isSuperadmin && (

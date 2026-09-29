@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import type { SystemOption, Tenant, TenantSpecialistRow, TenantStackChoice } from '../lib/types';
+import { AccountManagerField } from './AccountManagerField';
+import { getTenant, listTenantSpecialists } from '../lib/api/staff';
+import { errorMessage } from '../lib/api/client';
 
 interface ClientPanelProps {
   tenantId: string;
@@ -19,9 +22,13 @@ export function ClientPanel({ tenantId, onBack, onOpenRole }: ClientPanelProps) 
   const [pickSystemOptionId, setPickSystemOptionId] = useState('');
 
   const loadTenant = useCallback(async () => {
-    const { data, error } = await supabase.from('tenants').select('*').eq('id', tenantId).single();
-    if (error) setError(error.message);
-    else setTenant(data as Tenant);
+    try {
+      const data = await getTenant(tenantId);
+      if (data) setTenant(data);
+      else setError('Cliente no encontrado.');
+    } catch (e) {
+      setError(errorMessage(e));
+    }
   }, [tenantId]);
 
   const loadStack = useCallback(async () => {
@@ -38,13 +45,11 @@ export function ClientPanel({ tenantId, onBack, onOpenRole }: ClientPanelProps) 
   }, []);
 
   const loadSpecialists = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('tenant_specialist')
-      .select('id, job_role_key, job_role_version, status, contracted_at, notes')
-      .eq('tenant_id', tenantId)
-      .order('contracted_at', { ascending: false });
-    if (error) setError(error.message);
-    else setSpecialists((data ?? []) as TenantSpecialistRow[]);
+    try {
+      setSpecialists(await listTenantSpecialists(tenantId));
+    } catch (e) {
+      setError(errorMessage(e));
+    }
   }, [tenantId]);
 
   useEffect(() => {
@@ -107,6 +112,14 @@ export function ClientPanel({ tenantId, onBack, onOpenRole }: ClientPanelProps) 
           </h2>
         </div>
         <div className="role-fields">
+          <div className="field">
+            <span className="field-label">Gestor de cuenta</span>
+            <AccountManagerField
+              tenantId={tenant.id}
+              currentProfileId={tenant.account_manager_profile_id}
+              onChanged={loadTenant}
+            />
+          </div>
           <div className="field">
             <span className="field-label">Razón social</span>
             <span className="field-value">{tenant.legal_name || '—'}</span>

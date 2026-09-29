@@ -1,0 +1,97 @@
+.auth-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+  background:
+    radial-gradient(60rem 40rem at 70% -10%, var(--action-glow), transparent 60%),
+    var(--bg-app);
+}
+
+.auth-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: min(var(--login-width), 100%);
+  padding: var(--space-10) var(--space-8) var(--space-8);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.auth-card__logo {
+  display: block;
+  height: var(--logo-login-height);
+  margin: 0 auto var(--space-2);
+}
+
+.auth-card__title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  text-align: center;
+}
+
+.auth-card__subtitle {
+  margin: calc(var(--space-3) * -1) 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.auth-card__captcha {
+  min-height: var(--captcha-height); /* evita salto de maquetación al cargar el widget */
+}
+
+.auth-card__back {
+  align-self: center;
+}
+
+.auth-card__foot {
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* 2FA */
+.mfa-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.mfa-code {
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  letter-spacing: 0.4em;
+  text-align: center;
+}
+
+.mfa-qr {
+  align-self: center;
+  width: 12rem;
+  height: 12rem;
+  padding: var(--space-3);
+  background: var(--color-bone); /* el QR necesita fondo claro para escanearse */
+  border-radius: var(--radius-md);
+}
+
+.mfa-secret {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.mfa-secret__value {
+  display: block;
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-app);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+  user-select: all;
+}

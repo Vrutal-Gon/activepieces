@@ -117,6 +117,7 @@ export interface Tenant {
   region: string | null;
   is_internal: boolean;
   data_plane_status: string | null;
+  account_manager_profile_id: string | null;
 }
 
 export interface SystemOption {
@@ -153,4 +154,113 @@ export interface Provider {
   unit_cost_est: number | null;
   notes: string | null;
   docs_url: string | null;
+}
+
+export type PublishStatus = 'draft' | 'validated' | 'deprecated';
+export const BLOCK_KINDS = ['intake', 'normalize', 'context', 'decide', 'gate', 'act', 'audit'] as const;
+export type BlockKind = (typeof BLOCK_KINDS)[number];
+export const COMPOSITION_PATTERNS = ['WORKFLOW', 'AGENT', 'MULTI_AGENT', 'RULES', 'SCRIPT', 'API', 'LLM', 'RAG', 'ML', 'PROMPT', 'HUMAN'] as const;
+
+export interface Contract {
+  key: string;
+  version: number;
+  description: string;
+  json_schema: unknown;
+  status: PublishStatus;
+}
+
+export interface Block {
+  component_id: string;
+  name: string;
+  comp_type: string;
+  maturity: string;
+  kind: BlockKind | null;
+  variant: Record<string, unknown>;
+  version_count: number;
+  latest_version: number | null;
+}
+
+export interface ComponentVersion {
+  id: string;
+  version: number;
+  status: PublishStatus;
+  artifact_ref: string | null;
+  artifact_sha256: string | null;
+  output_contract_key: string | null;
+  output_contract_version: number | null;
+  consumes: string[];
+  changelog: string;
+  created_at: string;
+}
+
+export interface Composition {
+  id: string;
+  key: string;
+  version: number;
+  name: string;
+  pattern: string;
+  status: PublishStatus;
+  task_version: number;
+  changelog: string;
+  slot_count: number;
+}
+
+export interface CompositionSlot {
+  id: string;
+  position: number;
+  slot_key: string;
+  kind: BlockKind;
+  optional: boolean;
+  is_default: boolean;
+  applies_when: Record<string, unknown>;
+  component_version_id: string;
+  component_id: string;
+  component_name: string;
+  variant: Record<string, unknown>;
+  version: number;
+  version_status: PublishStatus;
+  output_contract: string | null;
+}
+
+export interface CompositionIssue {
+  severity: 'error' | 'warning';
+  slot_key: string | null;
+  message: string;
+}
+
+export interface StaffIdentity {
+  profile_id: string;
+  email: string;
+  full_name: string | null;
+  role_keys: string[];
+  role_names: string[];
+  permission_keys: string[];
+}
+
+export interface StaffMember {
+  profile_id: string;
+  email: string;
+  full_name: string | null;
+  status: string;
+  role_keys: string[];
+  created_at: string;
+  last_sign_in_at: string | null;
+}
+
+export interface TenantOverview {
+  id: string;
+  name: string;
+  legal_name: string | null;
+  status: string;
+  industry: string | null;
+  is_internal: boolean;
+  data_plane_status: string | null;
+  account_manager_profile_id: string | null;
+  account_manager_name: string | null;
+}
+
+export interface PlatformRole {
+  key: string;
+  name: string;
+  permission_keys: string[];
 }

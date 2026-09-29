@@ -1,36 +1,38 @@
 import { useEffect, useState } from 'react';
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabaseClient';
+import { AppShell } from './components/AppShell';
+import { MfaGate } from './components/MfaGate';
 import { ClientList } from './pages/ClientList';
 import { ClientPanel } from './pages/ClientPanel';
+import { Dashboard } from './pages/Dashboard';
 import { LoginForm } from './pages/LoginForm';
 import { RoleList } from './pages/RoleList';
 import { RolePanel } from './pages/RolePanel';
+import { BlockLibrary } from './pages/BlockLibrary';
+import { Compositions } from './pages/Compositions';
 import { ProviderCatalog } from './pages/ProviderCatalog';
 import { SetNewPasswordForm } from './pages/SetNewPasswordForm';
+import { StaffTeam } from './pages/StaffTeam';
 import { SystemCatalog } from './pages/SystemCatalog';
 import { TaskComponentLinker, type TaskRoleContext } from './pages/TaskComponentLinker';
 import type { TaskSummary } from './lib/types';
 import './App.css';
 
-type View =
-  | 'roles-list'
-  | 'role-detail'
-  | 'components'
-  | 'clients-list'
-  | 'client-detail'
-  | 'systems'
-  | 'providers';
+interface ComponentsPreselection {
+  task: TaskSummary;
+  context: TaskRoleContext;
+}
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [recoveryMode, setRecoveryMode] = useState(false);
-  const [view, setView] = useState<View>('roles-list');
-  const [selectedRoleKey, setSelectedRoleKey] = useState('');
-  const [selectedTenantId, setSelectedTenantId] = useState('');
-  const [preselectTask, setPreselectTask] = useState<TaskSummary | null>(null);
-  const [roleContext, setRoleContext] = useState<TaskRoleContext | null>(null);
+  // La tarea preseleccionada al saltar de un rol a Componentes vive en memoria, no en la URL.
+  const [preselection, setPreselection] = useState<ComponentsPreselection | null>(null);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -45,92 +47,119 @@ function App() {
   }, []);
 
   if (loading) return <p className="center">Cargando…</p>;
-  if (recoveryMode) return <SetNewPasswordForm onDone={() => setRecoveryMode(false)} />;
   if (!session) return <LoginForm />;
 
-  function openRole(key: string) {
-    setSelectedRoleKey(key);
-    setView('role-detail');
-  }
-
   function openComponentsForTask(task: TaskSummary, context: TaskRoleContext) {
-    setPreselectTask(task);
-    setRoleContext(context);
-    setView('components');
+    setPreselection({ task, context });
+    navigate('/componentes', { state: { fromRole: true } });
   }
 
-  function openTenant(id: string) {
-    setSelectedTenantId(id);
-    setView('client-detail');
+  function signOut() {
+    setPreselection(null);
+    supabase.auth.signOut();
   }
 
-  function goToRolesList() {
-    setView('roles-list');
+  // Todo lo que requiere sesión pasa por la 2FA, incluida la recuperación de contraseña.
+  let content;
+  if (recoveryMode) {
+    content = (
+      <SetNewPasswordForm
+        onDone={() => {
+          setRecoveryMode(false);
+          navigate('/', { replace: true }); // no dejar el enlace de recuperación en el historial
+        }}
+      />
+    );
+  } else if (location.pathname === '/bienvenida') {
+    // Enlace de invitación: la persona entra con sesión pero aún sin contraseña.
+    content = <SetNewPasswordForm onDone={() => navigate('/', { replace: true })} />;
+  } else {
+    content = (
+      <Routes>
+        <Route element={<AppShell email={session.user.email ?? ''} onSignOut={signOut} />}>
+          <Route index element={<Navigate to="/clientes" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="clientes" element={<ClientsRoute />} />
+          <Route path="clientes/:tenantId" element={<ClientDetailRoute />} />
+          <Route path="roles" element={<RolesRoute />} />
+          <Route path="roles/:roleKey" element={<RoleDetailRoute onOpenComponents={openComponentsForTask} />} />
+          <Route path="componentes" element={<ComponentsRoute preselection={preselection} />} />
+          <Route path="composiciones" element={<Compositions />} />
+          <Route path="bloques" element={<BlockLibrary />} />
+          <Route path="sistemas" element={<SystemsRoute />} />
+          <Route path="proveedores" element={<ProviderCatalog />} />
+          <Route path="equipo" element={<StaffTeam />} />
+          <Route path="*" element={<Navigate to="/clientes" replace />} />
+        </Route>
+      </Routes>
+    );
   }
-
-  function goToComponentsTab() {
-    setRoleContext(null);
-    setPreselectTask(null);
-    setView('components');
-  }
-
-  function goToClientsList() {
-    setView('clients-list');
-  }
-
-  const rolesTabActive = view === 'roles-list' || view === 'role-detail';
-  const clientsTabActive = view === 'clients-list' || view === 'client-detail';
 
   return (
-    <div className="app">
-      <header className="topbar">
-        <h1>Vrutal1st · Catálogo</h1>
-        <nav>
-          <button className={rolesTabActive ? 'active' : ''} onClick={goToRolesList}>
-            Roles
-          </button>
-          <button className={view === 'components' ? 'active' : ''} onClick={goToComponentsTab}>
-            Componentes
-          </button>
-          <button className={clientsTabActive ? 'active' : ''} onClick={goToClientsList}>
-            Clientes
-          </button>
-          <button className={view === 'systems' ? 'active' : ''} onClick={() => setView('systems')}>
-            Sistemas
-          </button>
-          <button className={view === 'providers' ? 'active' : ''} onClick={() => setView('providers')}>
-            Proveedores
-          </button>
-        </nav>
-        <button className="signout" onClick={() => supabase.auth.signOut()}>
-          Salir ({session.user.email})
-        </button>
-      </header>
-      <main>
-        {view === 'roles-list' && <RoleList onSelectRole={openRole} />}
-        {view === 'role-detail' && (
-          <RolePanel
-            initialKey={selectedRoleKey}
-            onBack={goToRolesList}
-            onOpenComponents={openComponentsForTask}
-          />
-        )}
-        {view === 'components' && (
-          <TaskComponentLinker
-            initialTask={preselectTask}
-            roleContext={roleContext}
-            onBack={roleContext ? () => setView('role-detail') : undefined}
-          />
-        )}
-        {view === 'clients-list' && <ClientList onSelectTenant={openTenant} />}
-        {view === 'client-detail' && (
-          <ClientPanel tenantId={selectedTenantId} onBack={goToClientsList} onOpenRole={openRole} />
-        )}
-        {view === 'systems' && <SystemCatalog onOpenClient={openTenant} />}
-        {view === 'providers' && <ProviderCatalog />}
-      </main>
-    </div>
+    <MfaGate session={session} onSignOut={signOut}>
+      {content}
+    </MfaGate>
   );
+}
+
+// Adaptadores entre la URL y las props de las páginas existentes.
+
+function ClientsRoute() {
+  const navigate = useNavigate();
+  return <ClientList onSelectTenant={(id) => navigate(`/clientes/${encodeURIComponent(id)}`)} />;
+}
+
+function ClientDetailRoute() {
+  const { tenantId = '' } = useParams();
+  const navigate = useNavigate();
+  return (
+    <ClientPanel
+      tenantId={tenantId}
+      onBack={() => navigate('/clientes')}
+      onOpenRole={(key) => navigate(`/roles/${encodeURIComponent(key)}`)}
+    />
+  );
+}
+
+function RolesRoute() {
+  const navigate = useNavigate();
+  return <RoleList onSelectRole={(key) => navigate(`/roles/${encodeURIComponent(key)}`)} />;
+}
+
+interface RoleDetailRouteProps {
+  onOpenComponents: (task: TaskSummary, context: TaskRoleContext) => void;
+}
+
+function RoleDetailRoute({ onOpenComponents }: RoleDetailRouteProps) {
+  const { roleKey = '' } = useParams();
+  const navigate = useNavigate();
+  return <RolePanel initialKey={roleKey} onBack={() => navigate('/roles')} onOpenComponents={onOpenComponents} />;
+}
+
+interface ComponentsRouteProps {
+  preselection: ComponentsPreselection | null;
+}
+
+function ComponentsRoute({ preselection }: ComponentsRouteProps) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const state: unknown = location.state;
+  // Desde el menú lateral se entra sin preselección; solo desde un rol se conserva.
+  const fromRole = typeof state === 'object' && state !== null && 'fromRole' in state && state.fromRole === true;
+  const active = fromRole ? preselection : null;
+  return (
+    <TaskComponentLinker
+      key={location.key}
+      initialTask={active?.task ?? null}
+      roleContext={active?.context ?? null}
+      onBack={active ? () => navigate(-1) : undefined}
+    />
+  );
+}
+
+function SystemsRoute() {
+  const navigate = useNavigate();
+  return <SystemCatalog onOpenClient={(id) => navigate(`/clientes/${encodeURIComponent(id)}`)} />;
 }
 
 export default App;

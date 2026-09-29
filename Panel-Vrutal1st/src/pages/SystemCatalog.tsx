@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import type { SystemOption } from '../lib/types';
+import { ExternalLink } from '../components/ExternalLink';
 
 interface TenantForSystemOption {
   tenant_id: string;
@@ -249,13 +250,7 @@ export function SystemCatalog({ onOpenClient }: SystemCatalogProps) {
                     <td>{o.version || '—'}</td>
                     <td>{o.connection_notes || '—'}</td>
                     <td>
-                      {o.docs_url ? (
-                        <a href={o.docs_url} target="_blank" rel="noreferrer">
-                          Link
-                        </a>
-                      ) : (
-                        '—'
-                      )}
+                      <ExternalLink url={o.docs_url} label="Link" />
                     </td>
                     <td className="row-actions">
                       {isSuperadmin && (
