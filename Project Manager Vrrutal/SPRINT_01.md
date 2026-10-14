@@ -76,7 +76,7 @@ error que la regla de empate llama irreversible.
 | 1 | **Tabla de control `schema_change_log`** (fichero, hash, fecha, quién) + su cambio fechado | `db/plantillas/cambios/` | Creada y retro-rellenada con lo ya aplicado en Vrutal-labs |
 | 2 | **Script de alta** que aplica plantilla + todos los cambios **en orden de fecha**, registra cada uno y **aborta en voz alta** si uno falla | `db/` o `scripts/` | Idempotente; probado dos veces; falla a propósito en una prueba |
 | 3 | **Regenerar `vrutal_client_project_template.sql`** desde la base viva | `db/plantillas/` | 20 tablas, no 10; `handle_new_user` toma el rol de `app_metadata` |
-| 4 | **Auditoría de Vrutal1st**: cerrar la `002` a medias y las sobrecargas duplicadas de la `028` | `db/migrations/` | Verificado contra `pg_proc`/`pg_class`, distinguiendo tipo de objeto |
+| 4 | ~~**Auditoría de Vrutal1st**: cerrar la `002` a medias y las sobrecargas duplicadas de la `028`~~ → **HECHO el 2026-10-14, y no había SQL que arreglar.** Queda solo retirar la deuda de la documentación | `db/migrations/`, docs | Ver «Resultado de la auditoría» abajo |
 | 5 | **Retirar permisos por defecto** de Supabase (`TRUNCATE`, `REFERENCES`, `TRIGGER` para `anon` y `authenticated`) en las tablas que faltan | cambio fechado | Hoy solo hecho en `integrations`; repasar el resto |
 | 6 | **Probar en sombra el paso «Pide permiso» de F2** | `Activepieces/flows/MKT-F2_linkedin/` | Confirmado si el flujo **se reanuda de verdad** tras decidir en el panel |
 
@@ -117,6 +117,42 @@ cuesta. Si el flujo no se reanuda, hace falta otra fuente de URL de reanudación
 | Un cambio fechado puede no ser idempotente y romper al reaplicarse | Cada uno lleva su `.test.sql` en seco; los que no lo tengan, se les hace |
 | Tocar permisos (el 5) puede romper una pantalla en uso | Un cambio por tabla, con su prueba en seco, y verificar la pantalla afectada |
 | El 6 puede salir mal y abrir rediseño | Es justo el objetivo: saberlo ahora. Si sale mal, pasa a diseño, no a construcción a ciegas |
+
+---
+
+## Resultado de la auditoría (2026-10-14)
+
+Hecha objeto por objeto contra las dos bases vivas, distinguiendo el tipo (`pg_proc` para
+funciones, `pg_class` + `relkind` para tablas y vistas), que es la trampa que ya dio un falso
+positivo con `work_collection_overview`.
+
+**Base de cliente (`rgauumxztblwurzebmsa`): limpia.** Los 18 objetos que declaran los cambios de
+`db/plantillas/cambios/` existen, **uno cada uno**, sin duplicados ni ausencias — las 15
+funciones, la vista y las dos tablas. Los dos cambios que se aplicaron tarde el 13 de octubre
+están. El riesgo que anotaba este plan («el registro miente») **no se materializó esta vez**, así
+que retro-rellenar `schema_change_log` parte de una base fiable.
+
+**Vrutal1st (`apmhvqlvwjcrwfaixgju`): las dos deudas estaban ya resueltas o adjudicadas.**
+
+- **Sobrecargas duplicadas de la `028`:** no existen. `catalog_create_system_option` y
+  `catalog_update_system_option` tienen **una firma cada una**, ambas con `p_provider_key`.
+- **La `002` «a medias»:** es real —**13 de sus 21 tablas no existen**— pero **no es un error
+  pendiente, es una decisión ya tomada y escrita**. La migración `029` (2026-10-11) la
+  adjudicó: crea solo `deployment.tenant_integration`, lo único que la `022` necesita de verdad,
+  y declara expresamente que **no resucita el resto** (motor de reglas `rule_matches`, vista
+  `v_tenant_profile`, `tenant_attribute`) porque nada lo llama. Incluso omite a conciencia la
+  columna `n8n_credential_ref`: n8n se descartó por Activepieces antes de que esa tabla llegara
+  a usarse.
+- **Verificado:** ninguna de las 13 tablas ausentes se referencia desde código de aplicación.
+  Solo aparecen en la `001` (hermana de la `002`) y en la propia `029`. Ni Panel-Vrutal1st ni
+  VrutalOS las tocan.
+
+**Lo que esto cambia.** Las 8 tablas `deployment.*` ausentes (`specialist`, `conversation`,
+`message`, `approval_request`, `run_log`…) son **duplicados de lo que vive en la base de cada
+cliente**, donde ya existen. Crearlas en el plano de control **contradiría D-01 y D-02**: la
+`002` se escribió antes de que «un Supabase por cliente» fuera firme, y esa decisión la dejó
+obsoleta. No hay nada que arreglar en SQL; hay una deuda que **retirar de la documentación**,
+porque seguía figurando como pendiente en el registro de cambios y en la bitácora.
 
 ---
 

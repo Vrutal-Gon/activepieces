@@ -445,8 +445,12 @@ WhatsApp como el que falta.
   cambios llevaban **cinco días** sin aplicar, en silencio, porque nada falla al arrancar: solo
   al usarse). Hace falta un script que aplique plantilla + todos los cambios en orden y **falle
   en voz alta**, más una tabla de control (`schema_change_log`) en la base del cliente.
-  **Lo mismo vale para `db/migrations/`**: la misma auditoría encontró la `002` aplicada a medias
-  y la `028` con sobrecargas duplicadas.
+  **En `db/migrations/` ya no queda deuda** (auditado el 2026-10-14): las sobrecargas duplicadas
+  de la `028` no existen —una firma cada una— y la `002` «a medias» **no es un error pendiente**:
+  la `029` la adjudicó por escrito el 2026-10-11, creando solo `deployment.tenant_integration` y
+  dejando el resto sin resucitar porque nada lo llama. Sus 8 tablas `deployment.*` ausentes son
+  duplicados de lo que vive en la base de cada cliente: crearlas **contradiría D-01 y D-02**.
+  La `002` se escribió antes de que «un Supabase por cliente» fuera firme.
 - **Plantilla de cliente desfasada** (10 tablas de 20).
 - **Provisioning del plano de datos**: manual (crear el Supabase del cliente, su VPS, su
   Activepieces).

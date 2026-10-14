@@ -34,9 +34,15 @@ La plantilla `../vrutal_client_project_template.sql` es el punto de partida de u
      es la auditoría a mano: extraer de cada fichero los objetos que declara y comprobarlos contra
      `pg_proc`/`pg_class`/`pg_constraint`, distinguiendo el tipo (buscar una vista en `pg_proc` da un
      falso positivo — pasó con `work_collection_overview`).
-  3. Lo mismo vale para `db/migrations/` de Vrutal 1st, que tampoco tiene tabla de control: allí la
-     misma auditoría encontró que la `002` se aplicó a medias y que la `028` dejó sobrecargas
-     duplicadas de `catalog_create_system_option`/`catalog_update_system_option`.
+  3. Lo mismo vale para `db/migrations/` de Vrutal 1st, que tampoco tiene tabla de control —
+     aunque **allí ya no queda deuda** (re-auditado el 2026-10-14): las sobrecargas duplicadas de
+     `catalog_create_system_option`/`catalog_update_system_option` que dejó la `028` **ya no
+     existen** (una firma cada una, con `p_provider_key`), y la `002` «a medias» **no es un error
+     pendiente**: la `029` lo adjudicó por escrito el 2026-10-11 creando solo
+     `deployment.tenant_integration` y dejando el resto sin resucitar porque nada lo llama. Sus 8
+     tablas `deployment.*` ausentes son duplicados de lo que vive en esta misma base de cliente;
+     crearlas en el plano de control contradiría D-01/D-02. Lo que sigue faltando allí es la
+     **tabla de control**, no un arreglo de esquema.
 
 - **Regenerar la plantilla desde la base viva.** Está desfasada: tiene 10 tablas frente a las 20 reales y su `handle_new_user` hace admin al primer usuario, cuando la base real toma el rol de `app_metadata` (solo lo escribe Vrutal con la clave de servicio). Hacerlo antes del próximo cliente; hasta entonces, plantilla + cambios no reproducen la base viva.
 
