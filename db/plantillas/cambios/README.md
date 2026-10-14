@@ -25,15 +25,30 @@ La plantilla `../vrutal_client_project_template.sql` es el punto de partida de u
   `profiles.role`). Los dos llevaban días así, en silencio, porque nada falla al arrancar: solo
   falla al usarse.
 
-  Qué hace falta, antes del primer cliente externo:
-  1. Un script de alta que aplique `vrutal_client_project_template.sql` y **todos** los cambios de
-     esta carpeta en orden de fecha, y que **falle en voz alta** si uno no se aplica — nunca saltarse
-     uno «porque no parece relevante».
-  2. Una **tabla de control en la propia base del cliente** (p. ej. `schema_change_log`: nombre de
-     fichero, hash, fecha) que el script rellene. Mientras no exista, la única verificación posible
-     es la auditoría a mano: extraer de cada fichero los objetos que declara y comprobarlos contra
-     `pg_proc`/`pg_class`/`pg_constraint`, distinguiendo el tipo (buscar una vista en `pg_proc` da un
-     falso positivo — pasó con `work_collection_overview`).
+  Qué hacía falta antes del primer cliente externo, y en qué va:
+  1. ✅ **CONSTRUIDO el 2026-10-14** (pendiente de ejecutar): `scripts/aplicar-cambios-cliente.sh`
+     aplica la plantilla y **todos** los cambios de esta carpeta en orden de fecha, y **aborta en
+     voz alta nombrando el fichero** si uno falla o si un fichero ya aplicado ha cambiado por
+     debajo. Nunca se salta uno. Por defecto solo **comprueba**: hay que pasarle `--apply` para
+     que escriba. Probado contra un Postgres desechable: modo check, arranque, `--retro`,
+     idempotencia (2ª pasada = 0 cambios), aborto por hash distinto (salida 1) y la red de
+     seguridad que impide ejecutarlo contra Vrutal 1st por error (salida 1).
+  2. ✅ **CONSTRUIDA el 2026-10-14** (pendiente de aplicar): `2026-10-14_schema_change_log.sql`
+     crea la tabla de control en la propia base del cliente (fichero, hash, fecha, quién, origen).
+     El hash se calcula sobre el fichero **normalizado a LF**, porque el repositorio se trabaja en
+     Windows y git cambia los finales de línea: hashear los bytes crudos acusaría de modificado un
+     fichero intacto. Cerrada al cliente (sin permiso para `anon`/`authenticated`), igual que
+     `catalog_flow_ro`.
+
+     **Lo que queda es ejecutarlo**: en Vrutal-labs con `--apply --retro`, porque sus cambios ya
+     están aplicados a mano (verificado objeto por objeto el 2026-10-14: los 18 objetos existen,
+     uno cada uno) y lo que falta es solo el rastro. En un cliente nuevo, con
+     `--apply --with-template`.
+
+     Mientras no se ejecute, la única verificación sigue siendo la auditoría a mano: extraer de
+     cada fichero los objetos que declara y comprobarlos contra `pg_proc`/`pg_class`/
+     `pg_constraint`, distinguiendo el tipo (buscar una vista en `pg_proc` da un falso positivo —
+     pasó con `work_collection_overview`).
   3. Lo mismo vale para `db/migrations/` de Vrutal 1st, que tampoco tiene tabla de control —
      aunque **allí ya no queda deuda** (re-auditado el 2026-10-14): las sobrecargas duplicadas de
      `catalog_create_system_option`/`catalog_update_system_option` que dejó la `028` **ya no
@@ -69,6 +84,7 @@ La plantilla `../vrutal_client_project_template.sql` es el punto de partida de u
 
 | `2026-10-13_approval_resume.sql` | **Aprobar en la pantalla reanuda el flujo.** `approval_requests` gana `resume_url` (el enlace que reanuda el flujo de Activepieces, **sin GRANT para `authenticated`** igual que `integrations.secret_ref`: quien lo leyera reanudaría un flujo sin decidir nada) e `item_decisions` (qué se aprobó cuando una aprobación lleva varios elementos, p. ej. F14 decide canal por canal con una sola pausa). Nueva RPC `decide_approval()`, único camino para decidir: paga la deuda ya anotada abajo — `decided_by`/`decided_at` los fija el servidor y se retira el UPDATE directo de `authenticated`. El criterio de quién puede decidir es el mismo que ya tenían las políticas (admin, asignada o delegación vigente). | Vrutal-labs · 2026-10-13 (SQL Editor, verificado) |
 | `2026-10-13_sync_specialists_grant.sql` | **El sync puede crear especialistas.** Pareja de la migración `031` de Vrutal1st: `grant insert, update on specialists to vrutal_sync`. Sin DELETE a propósito (retirar un especialista es poner `status='retired'`; borrarlo dejaría huérfanas sus aprobaciones y entregables). Antes el sync solo tenía SELECT ahí, así que los flujos de un especialista contratado que no existiera en esta base se descartaban en silencio. | Vrutal-labs · 2026-10-13 (SQL Editor, verificado) |
+| `2026-10-14_schema_change_log.sql` | **Tabla de control de cambios de esquema.** El rastro que faltaba, en la propia base: una fila por cambio aplicado, con el hash del fichero normalizado a LF. La rellena `scripts/aplicar-cambios-cliente.sh`, que con ella sabe qué falta, se salta lo hecho y **aborta en voz alta** si un cambio falla o si un fichero ya aplicado ha cambiado. Cerrada al cliente (sin permiso para `anon`/`authenticated`), mismo criterio que `catalog_flow_ro`. No lleva `active_only` (regla 5) a propósito: sin ningún permiso para `authenticated`, esa política sería código muerto — razonado en la cabecera del fichero. Prueba en seco: `…schema_change_log.test.sql`, que comprueba justo el riesgo real (que la tabla no quede abierta). | **Pendiente.** Aplicar en Vrutal-labs con `aplicar-cambios-cliente.sh --apply --retro` |
 
 ## Edge Functions de cliente
 
