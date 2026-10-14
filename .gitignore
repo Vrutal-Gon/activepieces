@@ -52,6 +52,10 @@ vendor/
 _referencias/
 # Datos personales exportados
 datos/linkedin/
+# Fuentes de terceros ya importadas al catalogo (O*NET, ESCO, APQC): 32 MB de xlsx/csv
+# que git no comprime y que quedarian en el historial para siempre. Son descargables.
+# Si se decide versionarlas, basta con borrar esta linea.
+datos/fuentes/
 # Pendiente de revisión y borrado
 _eliminar/
 # Secretos de instancias de cliente
