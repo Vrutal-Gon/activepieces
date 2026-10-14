@@ -78,7 +78,7 @@ error que la regla de empate llama irreversible.
 | 3 | **Regenerar `vrutal_client_project_template.sql`** desde la base viva | `db/plantillas/` | 20 tablas, no 10; `handle_new_user` toma el rol de `app_metadata` |
 | 4 | ~~**Auditoría de Vrutal1st**: cerrar la `002` a medias y las sobrecargas duplicadas de la `028`~~ → **HECHO el 2026-10-14, y no había SQL que arreglar.** Queda solo retirar la deuda de la documentación | `db/migrations/`, docs | Ver «Resultado de la auditoría» abajo |
 | 5 | **Retirar permisos por defecto** de Supabase (`TRUNCATE`, `REFERENCES`, `TRIGGER` para `anon` y `authenticated`) en las tablas que faltan | cambio fechado | Hoy solo hecho en `integrations`; repasar el resto |
-| 6 | **Probar en sombra el paso «Pide permiso» de F2** | `Activepieces/flows/MKT-F2_linkedin/` | Confirmado si el flujo **se reanuda de verdad** tras decidir en el panel |
+| 6 | ~~**Probar en sombra el paso «Pide permiso» de F2**~~ → **HECHO el 2026-10-14.** Resuelto contra motor y servidor en vivo; apareció un fallo distinto y peor | `Activepieces/flows/MKT-F2_linkedin/` | Ver «Resultado del 6» abajo |
 
 **Por qué el 6 entra en una semana de infraestructura:** es barato, y resuelve la única
 incógnita que puede obligar a rediseñar el puente de aprobaciones. Cuanto antes se sepa, menos
@@ -117,6 +117,46 @@ cuesta. Si el flujo no se reanuda, hace falta otra fuente de URL de reanudación
 | Un cambio fechado puede no ser idempotente y romper al reaplicarse | Cada uno lleva su `.test.sql` en seco; los que no lo tengan, se les hace |
 | Tocar permisos (el 5) puede romper una pantalla en uso | Un cambio por tabla, con su prueba en seco, y verificar la pantalla afectada |
 | El 6 puede salir mal y abrir rediseño | Es justo el objetivo: saberlo ahora. Si sale mal, pasa a diseño, no a construcción a ciegas |
+
+---
+
+## Resultado del 6 (2026-10-14)
+
+**Mi sospecha del waitpoint era infundada; el fallo real es otro y es peor.**
+
+**La pausa es de ámbito de ejecución, no de waitpoint.** En el motor
+(`/usr/src/app/dist/packages/engine/main.js`):
+
+```js
+function createWaitForWaitpointHook({hookParams}){
+  return _waitpointId => {            // argumento IGNORADO (prefijo _)
+    hookParams.hookResponse = {...hookParams.hookResponse, type:"paused"}
+  }
+}
+```
+
+`waitForWaitpoint` **descarta su argumento** y solo marca la ejecución como `paused`. Así que
+encadenar `create_approval_links` (URL) y `wait_for_approval` (pausa) **sí funciona**: cualquier
+URL de reanudación válida de esa ejecución la despierta.
+
+**Pero `create_approval_links` devuelve una URL muerta.** Hace `` `${resumeUrl}/confirm` `` y esa
+ruta no existe en 0.82. Probado contra el servidor del lab:
+
+| URL | HTTP | Lectura |
+|---|---|---|
+| `…/v1/flow-runs/{run}/requests/{nonce}` | **400** | la ruta existe, falla la validación de mi uuid falso |
+| `…/requests/{nonce}/sync` | **400** | la ruta existe |
+| `…/requests/{nonce}/confirm` | **404** | **la ruta no existe** |
+| `…/requests/{nonce}/inventado` | **404** | idéntico a `/confirm` — es 404 de ruta, no de entidad |
+
+**Qué hacer al construir el paso:** quitar el sufijo `/confirm` del `approvalLink` antes de
+mandarlo a `approval-create`; la URL válida es la base. Si se guarda tal cual, el flujo **no se
+reanuda nunca** y falla en silencio — la aprobación queda decidida en el panel y parece que
+funcionó. Y recordar que el `?action=approve` no hace falta: la decisión se pide a
+`approval-result`.
+
+**Valor de haberlo hecho primero:** era el entregable más barato y ha cambiado el diseño del
+paso antes de escribirlo, no después.
 
 ---
 

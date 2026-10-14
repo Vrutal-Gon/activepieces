@@ -404,12 +404,20 @@ rastro de auditoría y es correcta—, pero no hay reintento: `decide_approval` 
 aprobaciones `pending`, así que volver a pulsar no reanuda. Hace falta relanzar a mano. Se acepta
 a propósito: el caso es raro y la alternativa (dejarla pendiente tras haberla decidido) mentiría.
 
-**Riesgo sin verificar, importante para quien construya el paso:** las dos acciones de la pieza
-crean **cada una su propio punto de espera**. `create_approval_links` da una URL pero no pausa;
-`wait_for_approval` pausa pero no da URL. Si un flujo encadena las dos, se dispararía la URL del
-primer punto mientras la ejecución está parada en el segundo, y **no despertaría nunca**. Puede
-que no ocurra, si la reanudación es de ámbito de ejecución; **no se ha confirmado**. Es un fallo
-silencioso: parece que funcionó. **Probar en sombra antes de darlo por bueno.**
+**Verificado el 2026-10-14 contra el motor y el servidor en vivo** — dos conclusiones, y la
+segunda es la que importa:
+
+1. **La pausa es de ámbito de ejecución, no de waitpoint.** En el motor,
+   `createWaitForWaitpointHook` devuelve `_waitpointId => {...type:"paused"}`: **descarta su
+   argumento** y solo marca la ejecución como pausada. Así que un flujo sí puede pedir la URL
+   con `create_approval_links` y pausarse después con `wait_for_approval`.
+2. **Pero `create_approval_links` devuelve una URL muerta.** Hace `` `${resumeUrl}/confirm` `` y
+   esa ruta **no existe** en 0.82. Probado: la base y `/sync` dan **400** (ruta existe, entrada
+   inválida), mientras `/confirm` da **404**, igual que un sufijo inventado.
+
+**Qué hacer:** quitar el sufijo `/confirm` antes de guardar el enlace en `approval-create`; la
+URL válida es la base. Si se guarda tal cual, el flujo **no se reanuda nunca** y falla en
+silencio: la aprobación queda decidida en el panel y parece que funcionó.
 
 **Dirección a futuro (2026-10-14):** primero VrutalOS. Después, para «poner en pendientes»,
 combinar soluciones: tras X horas **laborables** esperando, escalar a Slack, WhatsApp o Teams
