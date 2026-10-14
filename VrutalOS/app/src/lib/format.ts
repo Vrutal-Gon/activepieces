@@ -1,0 +1,27 @@
+const DATE = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+
+/** «5 oct 2026». Devuelve «—» si no hay fecha o no es válida. */
+export function formatDate(iso: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '—' : DATE.format(d);
+}
+
+const USD = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD' });
+const INT = new Intl.NumberFormat('es-ES');
+const COMPACT = new Intl.NumberFormat('es-ES', { notation: 'compact', maximumFractionDigits: 1 });
+
+/** El coste se registra en dólares (run_log.cost_usd): se muestra tal cual, sin convertir. */
+export const formatUsd = (n: number) => USD.format(n);
+export const formatInt = (n: number) => INT.format(n);
+/** «1,9 M» para cifras grandes de tokens; las pequeñas salen enteras. */
+export const formatCompact = (n: number) => (n < 10_000 ? INT.format(n) : COMPACT.format(n));
+
+const DATE_TIME = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+/** «5 oct, 14:32». */
+export function formatDateTime(iso: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '—' : DATE_TIME.format(d);
+}

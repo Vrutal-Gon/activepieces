@@ -1,0 +1,9 @@
+.matrix th,
+.matrix td {
+  text-align: center;
+}
+
+.matrix th:first-child,
+.matrix td:first-child {
+  text-align: left;
+}

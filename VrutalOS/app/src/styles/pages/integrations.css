@@ -1,0 +1,80 @@
+.integ {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.integ__head {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.integ__avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-md);
+  background: var(--action-subtle);
+  color: var(--action-text);
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.integ__name {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.integ__detail {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.integ__actions {
+  display: flex;
+  justify-content: flex-start;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.integ__form {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* URLs de redirección que el cliente copia en el portal del proveedor. Se parten por
+   cualquier carácter: son largas y no deben desbordar la tarjeta en pantalla estrecha. */
+.integ__redirects {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.integ__redirects li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.integ__redirects code {
+  flex: 1 1 14rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  background: var(--surface-sunken, rgb(0 0 0 / 4%));
+  border-radius: var(--radius-sm, 4px);
+  padding: var(--space-1) var(--space-2);
+}

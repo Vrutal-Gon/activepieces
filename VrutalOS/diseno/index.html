@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VrutalOS · Mockup de layouts</title>
+  <link rel="icon" href="favicon.svg" />
+  <link rel="stylesheet" href="css/design-tokens.css" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/shell.css" />
+  <link rel="stylesheet" href="css/widgets.css" />
+  <link rel="stylesheet" href="mockup.css" />
+</head>
+<body>
+<div id="app"></div>
+
+<div class="mock-bar" role="group" aria-label="Controles del mockup (no forman parte del producto)">
+  <span class="eyebrow">Mockup · Layout</span>
+  <button type="button" data-layout="usuario" aria-pressed="true">Usuario</button>
+  <button type="button" data-layout="admin" aria-pressed="false">Admin</button>
+</div>
+
+<script>
+/* ---------- Datos de ejemplo (nombres reales del esquema VrutalOS) ---------- */
+const TENANT = 'Vrutal-labs'; // en producción: viene de la instancia, nunca hardcodeado
+const PEOPLE = {
+  usuario: { name: 'Marta Ruiz', email: 'marta@vrutal-labs.com', role: 'Usuario' },
+  admin: { name: 'Gonzalo', email: 'gonzalo@vrutal-labs.com', role: 'Administrador' },
+};
+
+/* ---------- Navegación ---------- */
+const WORKSPACES = {
+  trabajo: {
+    label: 'Mi trabajo', hint: 'Especialistas y tareas', icon: '◉', home: 'inicio',
+    groups: [
+      { label: 'Trabajo', items: [
+        { id: 'inicio', label: 'Inicio', icon: '◉' },
+        { id: 'conversaciones', label: 'Conversaciones', icon: '✉' },
+        { id: 'especialistas', label: 'Especialistas', icon: '◆' },
+        { id: 'aprobaciones', label: 'Aprobaciones', icon: '◷', badge: 3 },
+        { id: 'reportes', label: 'Reportes', icon: '▦' },
+      ]},
+      { label: 'Ayuda', items: [
+        { id: 'soporte', label: 'Soporte', icon: '?', adminOnly: true },
+      ]},
+    ],
+  },
+  admin: {
+    label: 'Administración', hint: 'Equipo y empresa', icon: '⬡', home: 'resumen',
+    groups: [
+      { label: 'Empresa', items: [
+        { id: 'resumen', label: 'Resumen', icon: '◉' },
+        { id: 'equipo', label: 'Equipo', icon: '☺' },
+        { id: 'accesos', label: 'Accesos', icon: '⧉' },
+        { id: 'integraciones', label: 'Integraciones', icon: '⌁' },
+      ]},
+      { label: 'Control', items: [
+        { id: 'consumo', label: 'Consumo', icon: '▤' },
+        { id: 'personalizacion', label: 'Personalización', icon: '✎', pending: true },
+        { id: 'delegaciones', label: 'Delegaciones', icon: '⇄', pending: true },
+        { id: 'auditoria', label: 'Auditoría', icon: '⎘', pending: true },
+      ]},
+    ],
+  },
+};
+
+const PENDING = {
+  personalizacion: ['Personalización', 'La tabla specialist_prompts del brief no existe en el esquema actual de VrutalOS. Hace falta decidir dónde vive el historial de prompts antes de diseñar esta pantalla.'],
+  delegaciones: ['Delegaciones de aprobación', 'Tabla approval_delegation (ya existe, 0 filas). Pantalla simple: quién delega en quién, desde cuándo hasta cuándo, revocar.'],
+  auditoria: ['Auditoría', 'Tabla audit_log (ya existe, 0 filas). Solo lectura: quién hizo qué y cuándo, incluido el acceso de soporte de Vrutal.'],
+};
+
+const state = { layout: 'usuario', workspace: 'trabajo', screen: 'inicio', convo: 0, navOpen: false, ctab: 'publicaciones', calView: 'calendario', modal: null, pausedPosts: new Set(), draftDecision: {}, overrides: {}, chatAnchor: null, chatDecision: {}, manualPostIdx: new Set(), floatingChatOpen: false, draftPublished: new Set() };
+
+/* Datos de ejemplo del especialista Contenido y Promoción (compartidos entre la pantalla y los modales).
+   El último elemento de cada fila de borradores/publicaciones/metricDetalle (#tema:…, #formato:…) es
+   una etiqueta que pone la IA sola, para su propio aprendizaje (qué tema o formato rinde mejor) —
+   nunca se pinta en esta pantalla ni en ninguna otra: el cliente no la ve, igual que no ve el catálogo. */
+const CP_DATA = {
+  canales: [
+    ['LinkedIn', 'ok', 'Conectado'],
+    ['X', 'ok', 'Conectado'],
+    ['Instagram', 'bad', 'Necesita reconectar'],
+    ['Facebook', 'pending', 'No conectado'],
+  ],
+  calendario: [
+    ['Semana 41', '14 oct · 09:00', 'Cómo reducir la rotación de personal en pymes', 'LinkedIn', 'rotación de personal en pymes'],
+    ['Semana 41', '16 oct · 09:00', '3 señales de burnout en tu equipo', 'LinkedIn', 'estrés del equipo'],
+    ['Semana 42', '21 oct · 10:00', 'Automatiza tareas repetitivas sin perder el control', 'LinkedIn + X', 'automatizar tareas repetitivas'],
+  ],
+  borradores: [
+    ['Cómo reducir la rotación de personal en pymes', 'LinkedIn', 'La rotación de personal cuesta más de lo que crees…', '850/900 car.',
+      'La rotación de personal cuesta más de lo que crees: cada baja en una pyme cuesta de media 3 meses de sueldo en selección y formación.\n\nTres causas que vemos una y otra vez: falta de reconocimiento, sobrecarga sin plan y cero conversación sobre carrera. Ninguna cuesta dinero arreglarla — cuesta tiempo de calidad con tu equipo.\n\n¿Cuál de las tres pesa más en tu empresa ahora mismo?',
+      ['#tema:rotacion-personal', '#formato:texto'], '14 oct · 09:00'],
+    ['Cómo reducir la rotación de personal en pymes', 'X', '🧵 La rotación de personal no es solo un problema de RR. HH....', '265/280 car.',
+      '🧵 La rotación de personal no es solo un problema de RR. HH. — es un problema de caja.\n\n3 meses de sueldo por cada baja, de media. Y casi siempre se puede evitar.',
+      ['#tema:rotacion-personal', '#formato:hilo'], '14 oct · 10:00'],
+    ['3 señales de burnout en tu equipo', 'Instagram', 'Burnout: 3 señales que tu equipo te está dando ahora mismo…', '180/2.200 car.',
+      'Burnout: 3 señales que tu equipo te está dando ahora mismo 👀\n\n1. Entregan lo mínimo, sin iniciativa\n2. Las reuniones se alargan sin decidir nada\n3. El silencio en Slack ya no es foco, es desconexión\n\nSi ves dos de las tres, toca hablar — no esperar al siguiente 1:1.',
+      ['#tema:burnout', '#formato:carrusel'], '16 oct · 09:00'],
+  ],
+  publicaciones: [
+    ['Guía rápida: onboarding remoto', 'LinkedIn', '7 oct · 09:00', 'ok', 'Publicado', true, ['#tema:onboarding', '#formato:texto']],
+    ['Cómo reducir la rotación de personal en pymes', 'LinkedIn', '14 oct · 09:00', 'warn', 'Programado', false, ['#tema:rotacion-personal', '#formato:texto']],
+    ['Automatiza tareas repetitivas sin perder el control', 'X', '21 oct · 10:00', 'warn', 'Programado', false, ['#tema:automatizacion', '#formato:hilo']],
+    ['3 señales de burnout en tu equipo', 'Instagram', '16 oct · 12:00', 'bad', 'Error', false, ['#tema:burnout', '#formato:carrusel']],
+  ],
+  metricas: [
+    ['LinkedIn', '12.400', '340', '85', '6'],
+    ['X', '3.100', '90', '20', '0'],
+    ['Instagram', '2.800', '210', '12', '1'],
+  ],
+  evolucionSemanas: ['S35', 'S36', 'S37', 'S38', 'S39', 'S40', 'S41', 'S42'],
+  evolucionAlcance: {
+    LinkedIn: [8200, 8900, 9400, 10100, 10800, 11200, 11900, 12400],
+    X: [4200, 3900, 3600, 3400, 3300, 3200, 3150, 3100],
+    Instagram: [1200, 1500, 1800, 2100, 2300, 2500, 2650, 2800],
+  },
+  metricDetalle: {
+    LinkedIn: [
+      ['Guía rápida: onboarding remoto', '7 oct', '8.900', '210', '34', '18', '52', ['#tema:onboarding', '#formato:texto']],
+      ['5 errores al delegar tareas', '30 sep', '3.500', '95', '11', '6', '33', ['#tema:delegacion', '#formato:texto']],
+    ],
+    X: [['5 errores al delegar tareas', '30 sep', '3.100', '70', '8', '12', '20', ['#tema:delegacion', '#formato:hilo']]],
+    Instagram: [['5 errores al delegar tareas', '30 sep', '2.800', '180', '20', '10', '12', ['#tema:delegacion', '#formato:carrusel']]],
+  },
+};
+
+/* Conversaciones de ejemplo. La 3ª muestra el patrón "hablar con el especialista desde cualquier
+   referencia": se abre con un anclaje (qué fila la disparó), el especialista pregunta lo que le
+   falta, y propone la acción con confirmación inline (misma fila que vería Aprobaciones). */
+const CONVOS = [
+  { title: 'Leads de la semana', meta: 'SDR · hace 12 min', participantes: ['SDR'],
+    mensajes: [
+      { from: 'Tú', text: '¿Cuántos leads han entrado desde el formulario esta semana?' },
+      { from: 'SDR', text: 'Han entrado 9 leads. 6 están validados, 2 duplicados y 1 descartado por email inválido. ¿Quieres que prepare el registro de los 6 validados en el CRM?' },
+      { from: 'SDR', text: 'Para registrarlos necesito tu aprobación. Te la he enviado a Aprobaciones.' },
+    ] },
+  { title: 'Limpieza de duplicados', meta: 'Data Entry · SDR · ayer', participantes: ['Data Entry', 'SDR'],
+    mensajes: [
+      { from: 'Tú', text: '¿Cuántos leads han entrado desde el formulario esta semana?' },
+      { from: 'SDR', text: 'Han entrado 9 leads. 6 están validados, 2 duplicados y 1 descartado por email inválido. ¿Quieres que prepare el registro de los 6 validados en el CRM?' },
+      { from: 'SDR', text: 'Para registrarlos necesito tu aprobación. Te la he enviado a Aprobaciones.' },
+    ] },
+  { title: 'Tu gestor Vrutal', meta: 'Vrutal · hace 2 min', participantes: ['Vrutal'],
+    mensajes: [
+      { from: 'Tú', text: 'Necesito cambiar las publicaciones de esta semana por un nuevo lanzamiento.' },
+      { from: 'Vrutal', text: '¿El lanzamiento ya tiene fecha, y quito solo esta publicación o toda la semana 42?' },
+      { from: 'Tú', text: 'Toda la semana 42. El lanzamiento se llama «Plan Pyme» y empieza el 20 de octubre.' },
+      { from: 'Vrutal', type: 'approval',
+        resumen: 'Pausar las publicaciones de la semana 42 y montar el calendario de la campaña «Plan Pyme» desde el 20 de octubre.',
+        campos: [['Publicaciones a pausar', 'Semana 42 (2)'], ['Campaña nueva', 'Plan Pyme'], ['Inicio', '20 oct']] },
+    ] },
+];
+function renderMsg(m, convoIdx, msgIdx) {
+  if (m.type === 'approval') {
+    const key = `${convoIdx}:${msgIdx}`;
+    const decision = state.chatDecision[key];
+    return `<div class="msg"><span class="msg__who">${m.from}</span>
+      <div class="approval" style="padding:var(--space-3) var(--space-4);background:var(--bg-surface-raised);border:1px solid var(--border-subtle);border-radius:var(--radius-md)">
+        <p style="margin:0">${m.resumen}</p>
+        <dl class="approval__fields">${m.campos.map((f) => `<div><dt>${f[0]}</dt><dd>${f[1]}</dd></div>`).join('')}</dl>
+        ${decision
+          ? `<div>${pill(decision === 'aprobada' ? 'Confirmado' : 'Rechazado', decision === 'aprobada' ? 'ok' : 'bad')}</div>`
+          : `<div class="row row--end"><button class="btn btn--danger btn--sm" data-chat-reject="${key}">Rechazar</button><button class="btn btn--primary btn--sm" data-chat-approve="${key}">Confirmar</button></div>`}
+      </div>
+    </div>`;
+  }
+  return `<div class="msg ${m.from === 'Tú' ? 'msg--me' : ''}"><span class="msg__who">${m.from}</span><p class="msg__body">${m.text}</p></div>`;
+}
+
+/* ---------- Pantallas ---------- */
+const pill = (t, k = '') => `<span class="pill ${k ? 'pill--' + k : ''}">${t}</span>`;
+const ov = (key, fallback) => ({ ...fallback, ...(state.overrides[key] || {}) });
+const head = (crumb, title, actions = '') => `
+  <header class="page-head"><div>
+    <ol class="crumbs"><li class="crumbs__item"><span class="eyebrow">${crumb}</span></li></ol>
+    <h1 class="page-header__title" style="margin:var(--space-1) 0 0">${title}</h1></div>${actions}</header>`;
+const src = (t) => `<p class="src">${t}</p>`;
+const fmtK = (n) => (n >= 1000 ? (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1) + 'K' : String(n));
+
+/* Icono por canal/plataforma (insignia de color, sin depender de logos de terceros) */
+const CHANNEL_ICONS = {
+  LinkedIn: { bg: '#0A66C2', label: 'in' },
+  X: { bg: '#000000', label: '✕' },
+  Instagram: { bg: '#C1366B', label: '◎' },
+  Facebook: { bg: '#1877F2', label: 'f' },
+};
+const channelIcon = (name) => {
+  const c = CHANNEL_ICONS[name] || { bg: 'var(--bg-surface-raised)', label: name[0] || '?' };
+  return `<span class="channel-badge" style="background:${c.bg}" title="${esc(name)}" aria-hidden="true">${c.label}</span>`;
+};
+const channelLabel = (name) => name.split(' + ').map((n) => `${channelIcon(n)} ${n}`).join(' · ');
+
+/* Cuándo: convierte entre el texto "14 oct · 09:00" (como se enseña) y fecha/hora separadas (como se eligen) */
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+function parseWhen(str) {
+  const m = /(\d{1,2})\s+([a-zñ]{3,})\D+(\d{1,2}):(\d{2})/i.exec(str || '');
+  if (!m) return { date: '', time: '' };
+  const monIdx = MESES.findIndex((x) => m[2].toLowerCase().startsWith(x));
+  if (monIdx < 0) return { date: '', time: '' };
+  return { date: `2026-${String(monIdx + 1).padStart(2, '0')}-${String(Number(m[1])).padStart(2, '0')}`, time: `${m[3]}:${m[4]}` };
+}
+function formatWhen(date, time) {
+  if (!date) return time ? `Sin fecha · ${time}` : 'Sin fecha';
+  const [, mo, d] = date.split('-').map(Number);
+  return `${d} ${MESES[mo - 1]} · ${time || '00:00'}`;
+}
+
+/* Minigráfica de 12 puntos para una fila de tabla: línea en gris, último punto en el acento (contrato stat-tile) */
+function sparkline(values) {
+  const w = 72, h = 24, pad = 3;
+  const min = Math.min(...values), max = Math.max(...values), span = max - min || 1;
+  const stepX = (w - pad * 2) / (values.length - 1);
+  const pts = values.map((v, i) => [pad + i * stepX, h - pad - ((v - min) / span) * (h - pad * 2)]);
+  const path = pts.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+  const [lx, ly] = pts[pts.length - 1];
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true" focusable="false">
+    <path d="${path}" fill="none" stroke="var(--text-secondary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="4" fill="var(--action)" stroke="var(--bg-surface)" stroke-width="2" />
+  </svg>`;
+}
+
+/* Gráfico de evolución (línea + área, una sola serie) con cruceta y tooltip al pasar el ratón */
+function evolutionChart(channel, weeks, values) {
+  const w = 560, h = 180, padL = 44, padR = 16, padT = 12, padB = 28;
+  const max = Math.ceil(Math.max(...values) / 2000) * 2000 || 1000;
+  const x = (i) => padL + (i * (w - padL - padR)) / (weeks.length - 1);
+  const y = (v) => h - padB - (v / max) * (h - padT - padB);
+  const pts = values.map((v, i) => [x(i), y(v)]);
+  const linePath = pts.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+  const areaPath = `${linePath} L${pts[pts.length - 1][0].toFixed(1)},${(h - padB).toFixed(1)} L${pts[0][0].toFixed(1)},${(h - padB).toFixed(1)} Z`;
+  const ticks = [0, max / 2, max];
+  const last = pts[pts.length - 1];
+  return `<div class="eviz" data-channel="${esc(channel)}">
+    <svg class="eviz__svg" viewBox="0 0 ${w} ${h}" role="img" aria-label="Evolución de alcance en ${esc(channel)}, últimas ${weeks.length} semanas">
+      ${ticks.map((t) => `<line class="eviz__grid" x1="${padL}" x2="${w - padR}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}" />`).join('')}
+      ${ticks.map((t) => `<text class="eviz__axislabel" x="${padL - 8}" y="${(y(t) + 4).toFixed(1)}" text-anchor="end">${fmtK(t)}</text>`).join('')}
+      ${weeks.map((wk, i) => (i % 2 === 0 ? `<text class="eviz__axislabel" x="${x(i).toFixed(1)}" y="${h - 8}" text-anchor="middle">${wk}</text>` : '')).join('')}
+      <path class="eviz__area" d="${areaPath}" />
+      <path class="eviz__line" d="${linePath}" fill="none" />
+      <circle class="eviz__end" cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="4" />
+      <text class="eviz__endlabel" x="${(last[0] + 8).toFixed(1)}" y="${(last[1] - 8).toFixed(1)}">${fmtK(values[values.length - 1])}</text>
+      <line class="eviz__crosshair" x1="${padL}" x2="${padL}" y1="${padT}" y2="${h - padB}" />
+      ${weeks.map((wk, i) => `<circle class="eviz__hit" data-i="${i}" data-x="${x(i).toFixed(1)}" data-week="${wk}" data-value="${values[i]}" cx="${x(i).toFixed(1)}" cy="${y(values[i]).toFixed(1)}" r="10" />`).join('')}
+    </svg>
+    <div class="eviz__tooltip" hidden></div>
+  </div>`;
+}
+
+/* Vuelve a enganchar la interacción de los gráficos de evolución tras cada render (el innerHTML se regenera entero) */
+function wireCharts() {
+  document.querySelectorAll('.eviz').forEach((box) => {
+    const svg = box.querySelector('.eviz__svg');
+    const crosshair = box.querySelector('.eviz__crosshair');
+    const tooltip = box.querySelector('.eviz__tooltip');
+    const hits = [...box.querySelectorAll('.eviz__hit')];
+    const hide = () => { crosshair.style.display = 'none'; tooltip.hidden = true; };
+    const show = (hit) => {
+      const xSvg = Number(hit.dataset.x);
+      crosshair.setAttribute('x1', xSvg); crosshair.setAttribute('x2', xSvg); crosshair.style.display = '';
+      const rect = svg.getBoundingClientRect();
+      const pxLeft = rect.width ? (xSvg / 560) * rect.width : xSvg;
+      tooltip.hidden = false;
+      tooltip.innerHTML = `<strong>${Number(hit.dataset.value).toLocaleString('es-ES')}</strong><span>${hit.dataset.week}</span>`;
+      tooltip.style.left = Math.min(Math.max(pxLeft, 8), Math.max(rect.width - 8, 8)) + 'px';
+    };
+    svg.addEventListener('pointermove', (e) => {
+      const rect = svg.getBoundingClientRect();
+      const svgX = rect.width ? ((e.clientX - rect.left) / rect.width) * 560 : 0;
+      let nearest = hits[0], best = Infinity;
+      for (const hit of hits) { const d = Math.abs(Number(hit.dataset.x) - svgX); if (d < best) { best = d; nearest = hit; } }
+      if (nearest) show(nearest);
+    });
+    svg.addEventListener('pointerleave', hide);
+    hide();
+  });
+}
+
+const SCREENS = {
+  inicio: () => head('Mi trabajo', `Buenos días, ${PEOPLE[state.layout].name.split(' ')[0]}`, `<button class="btn btn--primary" data-go="conversaciones">Nueva conversación</button>`) + `
+    <div class="stats">
+      <div class="stat"><span class="eyebrow">Esperan tu decisión</span><p class="stat__value">3</p><span class="stat__detail">aprobaciones</span></div>
+      <div class="stat"><span class="eyebrow">Conversaciones abiertas</span><p class="stat__value">2</p><span class="stat__detail">1 con novedades</span></div>
+      <div class="stat"><span class="eyebrow">Especialistas activos</span><p class="stat__value">2</p><span class="stat__detail">de 2 contratados</span></div>
+      <div class="stat"><span class="eyebrow">Reportes nuevos</span><p class="stat__value">1</p><span class="stat__detail">esta semana</span></div>
+    </div>
+    <div class="two-col" style="display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:var(--space-5)">
+      <section class="card"><div class="card__head"><h2 class="card__title">Necesita tu decisión</h2><button class="btn-link" data-go="aprobaciones">Ver todas</button></div>
+        <ul class="attention">
+          <li class="attention__item"><span class="sev sev--warn">Pendiente</span><div><span class="attention__title">Registrar lead «Acme S.L.» en el CRM</span><span class="attention__detail">Sales Development Representative · hace 12 min</span></div></li>
+          <li class="attention__item"><span class="sev sev--warn">Pendiente</span><div><span class="attention__title">Corregir 14 contactos duplicados</span><span class="attention__detail">Data Entry Clerk · hace 1 h</span></div></li>
+          <li class="attention__item"><span class="sev sev--warn">Pendiente</span><div><span class="attention__title">Actualizar conocimiento: tarifas 2027</span><span class="attention__detail">Petición tuya · en revisión</span></div></li>
+        </ul>${src('approval_requests where status = pending (RLS: lo mío o asignado a mí)')}</section>
+      <section class="card"><div class="card__head"><h2 class="card__title">Tus especialistas</h2><button class="btn-link" data-go="especialistas">Ver</button></div>
+        <div class="card__body stack">
+          <div class="row"><span class="spec__avatar">SDR</span><div><strong>Sales Development Rep.</strong><br>${pill('En auditoría','warn')} ${pill('Solo lectura')}</div></div>
+          <div class="row"><span class="spec__avatar">DE</span><div><strong>Data Entry Clerk</strong><br>${pill('En auditoría','warn')} ${pill('Solo lectura')}</div></div>
+        </div>${src('specialists ∩ user_specialist_access')}</section>
+    </div>`,
+
+  conversaciones: () => {
+    const convo = CONVOS[state.convo];
+    const anchor = convo.anchorDefault ? (state.chatAnchor || convo.anchorDefault) : null;
+    return head('Mi trabajo', 'Conversaciones', `<button class="btn btn--primary">Nueva conversación</button>`) + `
+    <div class="convo">
+      <div class="convo__list">${CONVOS.map((c, i) => `
+        <button class="convo__item" data-convo="${i}" ${state.convo === i ? 'aria-current="true"' : ''}>
+          <span class="convo__title">${c.title}</span><span class="muted small mono">${c.meta}</span></button>`).join('')}
+      </div>
+      <div class="convo__thread">
+        <div class="convo__bar"><div><strong>${convo.title}</strong><div class="muted small">Participan: ${convo.participantes.map((p) => pill(p)).join('')}</div></div>
+          <button class="btn btn--ghost btn--sm">Añadir especialista</button></div>
+        ${anchor ? `<p class="muted small" style="margin:0;padding:var(--space-2) var(--space-4);border-bottom:1px solid var(--border-subtle)">↳ Sobre: ${esc(anchor)}</p>` : ''}
+        <div class="convo__msgs">${convo.mensajes.map((m, i) => renderMsg(m, state.convo, i)).join('')}</div>
+        <div class="convo__composer"><input class="text-input" placeholder="Escribe un mensaje…" aria-label="Mensaje" /><button class="btn btn--primary">Enviar</button></div>
+      </div>
+    </div>${src('conversations · conversation_participants (varios especialistas) · messages · approval_requests (cuando el mensaje es una acción propuesta, misma fila que ve Aprobaciones)')}`;
+  },
+
+  especialistas: () => head('Mi trabajo', 'Especialistas') + `
+    <p class="lead">Los especialistas son tu equipo digital. Aquí ves qué hace cada uno y hasta dónde puede actuar. Solo Vrutal los activa o los cambia.</p>
+    <div class="cards">
+      ${[['SDR','Sales Development Representative','7 tareas','En auditoría'],['DE','Data Entry Clerk','59 tareas','En auditoría'],['CP','Contenido y Promoción','9 tareas','En piloto','especialista_contenido']].map(s => `
+      <article class="spec"><div class="spec__head"><span class="spec__avatar">${s[0]}</span><div><h2 class="spec__name">${s[1]}</h2>${pill('Activo','ok')}</div></div>
+        <dl class="spec__facts"><dt>Fase</dt><dd>${s[3]}</dd><dt>Puede</dt><dd>${s[4] ? 'Propone y tú apruebas' : 'Solo leer y proponer'}</dd><dt>Tareas</dt><dd>${s[2]}</dd></dl>
+        <div class="row"><button class="btn btn--primary btn--sm" data-go="conversaciones">Hablar</button><button class="btn btn--ghost btn--sm" data-go="${s[4] || 'especialista'}">Abrir</button><button class="btn btn--ghost btn--sm">Enviarle conocimiento</button></div>
+      </article>`).join('')}
+    </div>${src('specialists · catalog_flow_ro · knowledge_update_request (el botón crea una petición que pasa por aprobación)')}`,
+
+  especialista: () => head('Mi trabajo › Especialistas', 'Search Marketing') + `
+    <div class="row" style="margin-bottom:var(--space-4)"><span class="spec__avatar">SM</span><div><div>${pill('Activo','ok')}</div><div class="muted small">Fase: En piloto · Puede: Propone y tú apruebas</div></div></div>
+    <p class="lead">Lo que este especialista va produciendo. Revisa las propuestas y aprueba las que quieras: el resto de su trabajo parte de lo que apruebes.</p>
+    <div class="row" style="margin-bottom:var(--space-3)"><div class="chip-group"><button class="chip" aria-pressed="true">Keywords · 3</button><button class="chip" aria-pressed="false">Briefs de contenido</button><button class="chip" aria-pressed="false">Borradores</button></div></div>
+    <div class="row" style="margin-bottom:var(--space-3);justify-content:space-between">
+      <div class="chip-group"><button class="chip" aria-pressed="true">Propuestas · 3</button><button class="chip" aria-pressed="false">Aprobadas · 24</button><button class="chip" aria-pressed="false">Rechazadas · 5</button></div>
+      <div class="row"><span class="muted small">2 seleccionadas</span><button class="btn btn--danger btn--sm">Rechazar</button><button class="btn btn--primary btn--sm">Aprobar</button></div></div>
+    <section class="table-card"><table class="data-table"><thead><tr><th style="width:2rem"></th><th>Keyword</th><th>Dolor que resuelve</th><th>Intención</th><th class="data-table__num">Volumen / mes</th><th class="data-table__num">Dificultad</th><th>Idioma</th><th>Propuesta</th></tr></thead><tbody>
+      ${[['rotación de personal en pymes','Mal clima laboral y rotación','Informativa','1.300','34','es',true],
+         ['cómo reducir el estrés del equipo','Estrés y agotamiento del equipo','Informativa','2.900','41','es',true],
+         ['automatizar tareas repetitivas','Tareas repetitivas que consumen horas','Comparativa','880','27','es',false]]
+        .map(k => `<tr><td><input type="checkbox" class="check" ${k[6]?'checked':''} aria-label="Seleccionar ${k[0]}"></td><td><span class="data-table__primary">${k[0]}</span></td><td class="muted">${k[1]}</td><td>${k[2]}</td><td class="data-table__num">${k[3]}</td><td class="data-table__num">${k[4]}</td><td class="mono">${k[5]}</td><td>${pill('Propuesta','warn')}</td></tr>`).join('')}
+    </tbody></table></section>
+    <p class="muted small" style="margin-top:var(--space-3)">Cada pestaña es un tipo de entrega del especialista, lo que antes iba a una hoja de Google. No se muestra cómo está definido su trabajo, solo lo que produce.</p>
+    ${src('work_collection (qué pestañas tiene el especialista y sus columnas) · work_item (cada fila; estado propuesta / aprobada / rechazada) · el catálogo de tareas de Vrutal NO se lee nunca')}`,
+
+  especialista_contenido: () => {
+    const pendientes = CP_DATA.borradores.length - Object.keys(state.draftDecision).length;
+    const labels = { calendario: `Calendario · ${CP_DATA.calendario.length}`, borradores: `Borradores · ${pendientes}`, publicaciones: `Publicaciones · ${CP_DATA.publicaciones.length}`, metricas: 'Métricas' };
+    const tabs = {
+      calendario: () => {
+        const rows = CP_DATA.calendario.map((r, i) => ({ ...ov('cal:' + i, { title: r[2], when: r[1], channel: r[3] }), week: r[0], keyword: r[4] }));
+        const listView = `<table class="data-table"><thead><tr><th>Semana</th><th>Cuándo</th><th>Pieza</th><th>Canal</th><th>Palabra clave</th><th></th></tr></thead><tbody>
+          ${rows.map((r, i) => `<tr><td class="muted">${r.week}</td><td class="mono">${r.when}</td><td><span class="data-table__primary">${r.title}</span></td><td>${channelLabel(r.channel)}</td><td class="muted">${r.keyword}</td><td class="data-table__actions"><button class="btn btn--ghost btn--sm" data-edit="cal:${i}">Editar</button></td></tr>`).join('')}
+        </tbody></table>`;
+        const gridDays = [
+          { num: 12 }, { num: 13 }, { num: 14, idx: 0 }, { num: 15 }, { num: 16, idx: 1 }, { num: 17 }, { num: 18 },
+          { num: 19 }, { num: 20 }, { num: 21, idx: 2 }, { num: 22 }, { num: 23 }, { num: 24 }, { num: 25 },
+        ];
+        const gridView = `<div class="cal-grid">
+          ${['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(d => `<div class="cal-grid__head">${d}</div>`).join('')}
+          ${gridDays.map(d => `<div class="cal-day"><span class="cal-day__num">${d.num} oct</span>${d.idx !== undefined ? `<button class="cal-post" data-edit="cal:${d.idx}">${rows[d.idx].channel} · ${rows[d.idx].title}</button>` : ''}</div>`).join('')}
+        </div>`;
+        return `<section class="table-card"><div class="table-card__head"><h2 class="table-card__title">Calendario editorial</h2>
+          <div class="cal-toggle"><button class="btn btn--ghost btn--sm" data-calview="lista" aria-pressed="${state.calView === 'lista'}">Lista</button><button class="btn btn--ghost btn--sm" data-calview="calendario" aria-pressed="${state.calView === 'calendario'}">Calendario</button></div></div>
+          <div style="padding:var(--space-3)">${state.calView === 'calendario' ? gridView : listView}</div></section>`;
+      },
+      borradores: () => `<section class="table-card"><div class="table-card__head"><h2 class="table-card__title">Borradores por canal</h2><span class="table-card__meta">Pendientes de tu aprobación</span></div>
+        <table class="data-table"><thead><tr><th style="width:2rem"></th><th>Pieza</th><th>Canal</th><th>Cuándo</th><th>Extracto</th><th>Longitud</th><th>Estado</th><th></th></tr></thead><tbody>
+          ${CP_DATA.borradores.map((r, i) => {
+            const decision = state.draftDecision[i];
+            const vals = ov('draft:' + i, { channel: r[1], when: r[6] });
+            const estado = decision === 'aprobada' ? pill('Aprobada', 'ok') : decision === 'rechazada' ? pill('Rechazada', 'bad') : pill('Propuesta', 'warn');
+            return `<tr><td><input type="checkbox" class="check" aria-label="Seleccionar ${r[0]} · ${r[1]}"></td><td><span class="data-table__primary">${r[0]}</span></td><td>${channelLabel(vals.channel)}</td><td class="mono">${vals.when}</td><td class="muted">${r[2]}</td><td class="mono">${r[3]}</td><td>${estado}</td><td class="data-table__actions"><button class="btn btn--ghost btn--sm" data-draft="${i}" aria-label="Abrir">+</button></td></tr>`;
+          }).join('')}
+        </tbody></table>
+        <div class="row row--end" style="padding:var(--space-3)"><button class="btn btn--danger btn--sm">Rechazar</button><button class="btn btn--primary btn--sm">Aprobar</button></div></section>`,
+      publicaciones: () => `<section class="table-card"><div class="table-card__head"><h2 class="table-card__title">Publicaciones</h2><span class="table-card__meta">Programadas y publicadas en cada canal</span><button class="btn btn--primary btn--sm" data-new-post>Nueva publicación</button></div>
+        <table class="data-table"><thead><tr><th>Pieza</th><th>Canal</th><th>Cuándo</th><th>Estado</th><th></th></tr></thead><tbody>
+          ${CP_DATA.publicaciones.map((r, i) => {
+            const key = 'pub:' + i;
+            const vals = ov(key, { title: r[0], when: r[2], channel: r[1] });
+            const paused = state.pausedPosts.has(i);
+            const estadoLabel = paused ? 'Pausado' : r[4];
+            const estadoKey = paused ? 'pending' : r[3];
+            const manual = state.manualPostIdx.has(i) ? ` ${pill('Manual')}` : '';
+            let acciones = '';
+            if (r[3] === 'bad') acciones = `<span class="muted small">Vrutal está reconectando la cuenta</span> <button class="btn btn--ghost btn--sm" data-edit="${key}" aria-label="Editar">✎</button>`;
+            else if (paused) acciones = `<button class="btn btn--ghost btn--sm" data-pause="${i}" aria-label="Reanudar">▶</button><button class="btn btn--ghost btn--sm" data-edit="${key}" aria-label="Editar">✎</button>`;
+            else if (r[5]) acciones = `<button class="btn btn--ghost btn--sm" aria-label="Ver publicación">↗</button><button class="btn btn--ghost btn--sm" data-metric="${vals.channel}" aria-label="Ver rendimiento">📊</button>`;
+            else acciones = `<button class="btn btn--ghost btn--sm" data-pause="${i}" aria-label="Pausar">⏸</button><button class="btn btn--ghost btn--sm" data-edit="${key}" aria-label="Editar">✎</button>`;
+            return `<tr><td><span class="data-table__primary">${vals.title}</span>${manual}</td><td>${channelLabel(vals.channel)}</td><td class="mono">${vals.when}</td><td>${pill(estadoLabel, estadoKey)}</td><td class="data-table__actions">${acciones}</td></tr>`;
+          }).join('')}
+        </tbody></table></section>`,
+      metricas: () => `<section class="table-card"><div class="table-card__head"><h2 class="table-card__title">Métricas por canal</h2><span class="table-card__meta">Última semana completa · abre un canal para ver el detalle</span></div>
+        <table class="data-table"><thead><tr><th>Canal</th><th class="data-table__num">Alcance</th><th>Últimas 8 semanas</th><th class="data-table__num">Interacciones</th><th class="data-table__num">Clics</th><th class="data-table__num">Leads nuevos</th></tr></thead><tbody>
+          ${CP_DATA.metricas.map((r) => `<tr><td><a class="data-table__primary" href="#" data-metric="${r[0]}">${r[0]}</a></td><td class="data-table__num mono">${r[1]}</td><td>${sparkline(CP_DATA.evolucionAlcance[r[0]])}</td><td class="data-table__num mono">${r[2]}</td><td class="data-table__num mono">${r[3]}</td><td class="data-table__num mono">${r[4]}</td></tr>`).join('')}
+        </tbody></table>
+        <p class="muted small" style="padding:0 var(--space-3) var(--space-3)">Interacciones agrupa me gusta, comentarios y compartidos. Leads nuevos: contactos nuevos con ese canal como origen.</p></section>`,
+    };
+    return head('Mi trabajo › Especialistas', 'Contenido y Promoción') + `
+      <div class="row" style="margin-bottom:var(--space-3)"><span class="spec__avatar">CP</span><div><div>${pill('Activo', 'ok')}</div><div class="muted small">Fase: En piloto · Puede: Propone y tú apruebas · Publica solo lo aprobado</div></div></div>
+      <p class="lead">Lo que este especialista va produciendo: calendario, adaptaciones por canal y publicaciones. Revisa y aprueba; él programa y publica donde toque.</p>
+      <div class="row" style="margin-bottom:var(--space-4);flex-wrap:wrap;gap:var(--space-2)">
+        <span class="muted small">Canales conectados</span>${CP_DATA.canales.map(c => pill(`${c[0]} · ${c[2]}`, c[1])).join('')}
+      </div>
+      <div class="row" style="margin-bottom:var(--space-3)"><div class="chip-group">
+        ${Object.keys(labels).map(k => `<button class="chip" data-ctab="${k}" aria-pressed="${state.ctab === k}">${labels[k]}</button>`).join('')}
+      </div></div>
+      ${tabs[state.ctab]()}
+      <p class="muted small" style="margin-top:var(--space-3)">Cada pestaña es un tipo de entrega del especialista, lo mismo que en el resto de especialistas: no se enseña cómo está definido su trabajo, solo lo que produce.</p>
+      ${src('work_collection/work_item (Calendario, Borradores, Publicaciones) · deployment.tenant_integration (canales conectados; category=social, system=postiz) · analíticas e historial de publicación: Postiz, vía el flujo — el cliente nunca ve la interfaz de Postiz')}`;
+  },
+
+  aprobaciones: () => head('Mi trabajo', 'Aprobaciones') + `
+    <div class="row" style="margin-bottom:var(--space-4)"><div class="chip-group"><button class="chip" aria-pressed="true">Pendientes · 3</button><button class="chip" aria-pressed="false">Decididas</button></div></div>
+    <section class="card">
+      ${[['Registrar lead «Acme S.L.» en el CRM','Sales Development Representative · hace 12 min','Una persona ha pedido información desde el formulario web y no existe todavía en el CRM.',[['Empresa','Acme S.L.'],['Correo','ana@acme.es'],['Origen','Formulario web']]],
+         ['Corregir 14 contactos duplicados','Data Entry Clerk · hace 1 h','He encontrado contactos repetidos en HubSpot. Los fusionaré conservando el más completo.',[['Acción','Fusionar'],['Contactos','14'],['Sistema','HubSpot']]]].map(a => `
+      <div class="approval"><div class="row" style="justify-content:space-between"><div><strong>${a[0]}</strong><div class="muted small">${a[1]}</div></div>${pill('Pendiente','warn')}</div>
+        <p style="margin:0">${a[2]}</p>
+        <dl class="approval__fields">${a[3].map(f => `<div><dt>${f[0]}</dt><dd>${f[1]}</dd></div>`).join('')}</dl>
+        <details class="muted small"><summary style="cursor:pointer">Ver datos técnicos</summary></details>
+        <div class="row row--end"><button class="btn btn--danger btn--sm">Rechazar</button><button class="btn btn--primary btn--sm">Aprobar</button></div></div>`).join('')}
+    </section>${src('approval_requests (payload, status, decided_by) · el admin ve todas; el usuario solo las suyas')}`,
+
+  reportes: () => head('Mi trabajo', 'Reportes') + `
+    <div class="stack">
+      <section class="table-card"><div class="table-card__head"><h2 class="table-card__title">Generados para ti</h2></div>
+        <table class="data-table"><thead><tr><th>Reporte</th><th>Especialista</th><th>Formato</th><th>Fecha</th><th></th></tr></thead><tbody>
+          <tr><td><span class="data-table__primary">Resumen semanal de leads</span></td><td>SDR</td><td class="mono">PDF</td><td class="mono">29 sep</td><td class="data-table__actions"><button class="btn btn--ghost btn--sm">Abrir</button></td></tr>
+        </tbody></table></section>
+      <section class="card"><div class="card__head"><h2 class="card__title">Qué quieres recibir</h2><span class="card__meta">Elige reportes y los indicadores que verás en cada uno</span></div>
+        <div class="card__body stack"><label class="switch"><input type="checkbox" class="check" checked /> Resumen semanal de leads <span class="muted small">· SDR</span></label>
+        <div class="muted small">Indicadores: nada que mostrar todavía (catalog_kpi_ro está vacío).</div></div></section>
+    </div>${src('report_output · catalog_report_ro · user_report_subscription · user_kpi_selection')}`,
+
+  soporte: () => head('Ayuda', 'Soporte', `<button class="btn btn--primary">Nuevo ticket</button>`) + `
+    <p class="lead">¿Algo no funciona o necesitas algo? Escríbenos y tu gestor de cuenta de Vrutal te responde.</p>
+    <section class="empty-state"><h2 class="empty-state__title">Todavía no has abierto ningún ticket</h2><p class="empty-state__body">Cuando abras uno verás aquí su estado: abierto, en curso, resuelto.</p></section>${src('client_ticket (subject, body, status, account_manager)')}`,
+
+  /* ---- Admin ---- */
+  resumen: () => head('Administración', 'Resumen de la empresa') + `
+    <div class="stats">
+      <div class="stat"><span class="eyebrow">Personas con acceso</span><p class="stat__value">6</p><span class="stat__detail">1 administrador</span></div>
+      <div class="stat"><span class="eyebrow">Gasto este mes</span><p class="stat__value">42,10 €</p><span class="stat__detail">de 120 € previstos</span></div>
+      <div class="stat"><span class="eyebrow">Integraciones</span><p class="stat__value">3/4</p><span class="stat__detail">1 con error</span></div>
+      <div class="stat"><span class="eyebrow">Aprobaciones sin atender</span><p class="stat__value">3</p><span class="stat__detail">la más antigua: 1 h</span></div>
+    </div>
+    <section class="card"><div class="card__head"><h2 class="card__title">Requiere atención</h2></div>
+      <ul class="attention">
+        <li class="attention__item"><span class="sev sev--crit">Error</span><div><span class="attention__title">HubSpot: la clave ha dejado de funcionar</span><span class="attention__detail">Los especialistas no pueden leer el CRM. <button class="btn-link" data-go="integraciones" data-ws="admin">Sobrescribir clave</button></span></div></li>
+        <li class="attention__item"><span class="sev sev--warn">Aviso</span><div><span class="attention__title">Consumo al 35 % del presupuesto a día 5 del mes</span><span class="attention__detail">Marta Ruiz y SDR concentran el 80 %.</span></div></li>
+      </ul>${src('integrations.status · run_log · approval_requests')}</section>`,
+
+  equipo: () => head('Administración', 'Equipo', `<button class="btn btn--primary">Invitar persona</button>`) + `
+    <section class="table-card"><table class="data-table"><thead><tr><th>Persona</th><th>Rol</th><th>Estado</th><th></th></tr></thead><tbody>
+      <tr><td><span class="data-table__primary">Gonzalo (tú)</span><span class="data-table__secondary">gonzalo@vrutal-labs.com</span></td><td><select class="text-input" disabled aria-label="Rol"><option>Administrador</option></select> <span class="muted small">No puedes cambiar tu propio rol</span></td><td>${pill('Activo','ok')}</td><td></td></tr>
+      <tr><td><span class="data-table__primary">Marta Ruiz</span><span class="data-table__secondary">marta@vrutal-labs.com</span></td><td><select class="text-input" aria-label="Rol"><option>Usuario</option><option>Administrador</option></select></td><td>${pill('Activo','ok')}</td><td class="data-table__actions"><button class="btn btn--ghost btn--sm">Desactivar</button></td></tr>
+      <tr><td><span class="data-table__primary">Luis Ortega</span><span class="data-table__secondary">luis@vrutal-labs.com</span></td><td><select class="text-input" aria-label="Rol"><option>Usuario</option><option>Administrador</option></select></td><td>${pill('Desactivado')}</td><td class="data-table__actions"><button class="btn btn--ghost btn--sm">Reactivar</button></td></tr>
+    </tbody></table></section>${src('profiles (role, is_active) · el cambio del propio rol está bloqueado por trigger')}`,
+
+  accesos: () => head('Administración', 'Accesos a especialistas') + `
+    <p class="lead">Marca qué especialista puede usar cada persona.</p>
+    <section class="table-card"><table class="data-table matrix"><thead><tr><th>Persona</th><th>SDR</th><th>Data Entry</th></tr></thead><tbody>
+      <tr><td><span class="data-table__primary">Gonzalo</span></td><td><input type="checkbox" class="check" checked aria-label="Gonzalo · SDR" /></td><td><input type="checkbox" class="check" checked aria-label="Gonzalo · Data Entry" /></td></tr>
+      <tr><td><span class="data-table__primary">Marta Ruiz</span></td><td><input type="checkbox" class="check" checked aria-label="Marta · SDR" /></td><td><input type="checkbox" class="check" aria-label="Marta · Data Entry" /></td></tr>
+    </tbody></table></section>${src('user_specialist_access (profile_id, specialist_id)')}`,
+
+  integraciones: () => head('Administración', 'Integraciones') + `
+    <div class="notice notice--info" style="margin-bottom:var(--space-5)">Las claves se prueban antes de guardarse y se guardan cifradas. Una vez guardada, <strong>no se vuelve a mostrar</strong>: solo se puede sobrescribir.</div>
+    <div class="cards">
+      ${[['CRM','HubSpot','bad','Error · 401 del proveedor','Hace 2 h'],['Email','Google Workspace','ok','Validada','29 sep'],['Analítica','Google Analytics','ok','Validada','29 sep'],['Calendario','Google Calendar','ok','Validada','27 sep'],['Redes sociales','Postiz','warn','LinkedIn y X validados · Instagram necesita reconectar','Hace 1 día',true]].map(i => `
+      <article class="spec"><div class="spec__head"><span class="spec__avatar">${i[1][0]}</span><div><h2 class="spec__name">${i[1]}</h2><span class="muted small mono">${i[0]}</span></div></div>
+        <div>${pill(i[3], i[2])} <span class="muted small">${i[4]}</span></div>
+        <div class="row">${i[5] ? '<span class="muted small">La conexión de cada canal la gestiona Vrutal</span>' : `<button class="btn ${i[2]==='bad'?'btn--primary':'btn--ghost'} btn--sm">Sobrescribir clave</button><button class="btn btn--ghost btn--sm">Pausar</button>`}</div></article>`).join('')}
+    </div>${src('integrations (provider, status, secret_ref). Nunca se lee ni se pinta el secreto · la clave solo entra por escritura')}`,
+
+  consumo: () => head('Administración', 'Consumo', `<div class="chip-group"><button class="chip" aria-pressed="true">Este mes</button><button class="chip" aria-pressed="false">Mes anterior</button></div>`) + `
+    <div class="stats">
+      <div class="stat"><span class="eyebrow">Coste del mes</span><p class="stat__value">42,10 €</p><span class="stat__detail">de 120 € previstos</span></div>
+      <div class="stat"><span class="eyebrow">Ejecuciones</span><p class="stat__value">318</p><span class="stat__detail">+12 % vs. mes anterior</span></div>
+      <div class="stat"><span class="eyebrow">Tokens</span><p class="stat__value">1,9 M</p><span class="stat__detail">entrada + salida</span></div>
+    </div>
+    <section class="card"><div class="card__head"><h2 class="card__title">Coste por especialista</h2></div><div class="card__body">
+      <div class="bar"><span>Sales Development Rep.</span><div class="bar__track"><div class="bar__fill" style="width:78%"></div></div><span class="mono" style="text-align:right">32,80 €</span></div>
+      <div class="bar"><span>Data Entry Clerk</span><div class="bar__track"><div class="bar__fill" style="width:22%"></div></div><span class="mono" style="text-align:right">9,30 €</span></div>
+    </div>${src('run_log (provider, model_name, tokens_in/out, cost_usd) · solo admin por RLS')}</section>`,
+};
+
+/* ---------- Shell ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const initials = (n) => n.split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase();
+
+function render() {
+  const isAdmin = state.layout === 'admin';
+  if (!isAdmin) state.workspace = 'trabajo';
+  const ws = WORKSPACES[state.workspace];
+  const who = PEOPLE[state.layout];
+  const wsKeys = isAdmin ? ['trabajo', 'admin'] : ['trabajo'];
+
+  $('#app').innerHTML = `
+  <div class="shell" data-workspace="${state.workspace}">
+    <aside id="shell-nav" class="shell__side ${state.navOpen ? 'shell__side--open' : ''}">
+      <img class="shell__logo" src="vrutal-lockup-dark.svg" alt="Vrutal Labs" />
+      <div class="tenant"><span class="eyebrow">Empresa</span><span class="tenant__name">${TENANT}</span></div>
+      ${isAdmin ? `<div class="workspace" role="group" aria-label="Espacio de trabajo">${wsKeys.map((k) => `
+        <button type="button" class="workspace__option workspace__option--${k}" data-ws="${k}" ${k === state.workspace ? 'aria-current="true"' : ''}>
+          <span class="workspace__icon" aria-hidden="true">${WORKSPACES[k].icon}</span><span class="workspace__label">${WORKSPACES[k].label}</span><span class="workspace__hint">${WORKSPACES[k].hint}</span></button>`).join('')}</div>` : ''}
+      <nav aria-label="Principal">${ws.groups.filter((g) => g.items.some((i) => isAdmin || !i.adminOnly)).map((g) => `
+        <div class="side-nav__group"><span class="eyebrow side-nav__label">${g.label}</span>${g.items.filter((i) => isAdmin || !i.adminOnly).map((i) => `
+          <a href="#" class="side-nav__link ${i.pending ? 'side-nav__link--soon' : ''}" ${i.pending ? 'title="Pendiente de diseño"' : ''} data-screen="${i.id}" ${i.id === state.screen ? 'aria-current="page"' : ''}>
+            <span class="side-nav__icon" aria-hidden="true">${i.icon}</span>${i.label}
+            ${i.badge ? `<span class="pill pill--warn" style="margin-left:auto">${i.badge}</span>` : ''}</a>`).join('')}</div>`).join('')}
+      </nav>
+      <button type="button" class="side-nav__link side-nav__link--gestor" data-open-chat>
+        <img class="side-nav__icon chat-icon" src="vrutal-mark.svg" alt="" />VrutalOS</button>
+      <p class="shell__foot">VrutalOS · ${isAdmin ? 'admin' : 'usuario'}</p>
+    </aside>
+    ${state.navOpen ? '<div class="shell__scrim" data-close-nav></div>' : ''}
+    <div class="shell__body">
+      <div class="shell__head">
+        ${state.workspace === 'admin' ? `<div class="workspace-band" role="note"><span class="workspace-band__label">Administración</span><span class="workspace-band__text">Estás configurando la empresa: los cambios afectan a todas las personas del equipo</span><a class="workspace-band__exit" href="#" data-ws="trabajo">Ir a Mi trabajo →</a></div>` : ''}
+        <header class="topbar">
+          <button type="button" class="icon-button topbar__nav-toggle" data-toggle-nav aria-label="Menú de navegación"><svg class="icon" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+          <div class="search"><span class="search__icon" aria-hidden="true">⌕</span><input class="search__input" placeholder="Buscar conversaciones y especialistas" aria-label="Buscar" /><span class="search__kbd">Ctrl K</span></div>
+          <span class="topbar__spacer"></span>
+          <button class="icon-button" aria-label="Notificaciones">🔔</button>
+          <div class="account-menu"><span class="account-menu__trigger" style="cursor:default"><span class="account-menu__avatar">${initials(who.name)}</span><span class="account-menu__email">${esc(who.name)} · ${who.role}</span></span></div>
+        </header>
+      </div>
+      <main class="shell__main">${PENDING[state.screen] ? pendingView() : SCREENS[state.screen]()}</main>
+    </div>
+  </div>
+  ${renderModal()}
+  ${renderFloatingChat()}`;
+  wireCharts();
+}
+
+function renderFloatingChat() {
+  if (!state.floatingChatOpen) return '';
+  const convo = CONVOS[2];
+  return `<div class="floating-chat" role="dialog" aria-label="Chat con Vrutal">
+    <div class="floating-chat__head"><img src="vrutal-mark.svg" alt="" /><span class="floating-chat__title">Vrutal · tu gestor</span><button class="icon-button" data-close-chat aria-label="Cerrar">✕</button></div>
+    <div class="floating-chat__msgs">${convo.mensajes.map((m, i) => renderMsg(m, 2, i)).join('')}</div>
+    <div class="floating-chat__composer"><input class="text-input" placeholder="Escribe un mensaje…" aria-label="Mensaje" /><button class="btn btn--primary btn--sm">Enviar</button></div>
+  </div>`;
+}
+
+function pendingView() {
+  const [t, s] = PENDING[state.screen];
+  return head('Administración', t) + `<div class="pending-panel"><p class="pending-panel__title">${t} ${pill('Pendiente','pending')}</p><p class="pending-panel__source">${s}</p></div>`;
+}
+
+function renderModal() {
+  const m = state.modal;
+  if (!m) return '';
+  if (m.type === 'draft') {
+    const d = CP_DATA.borradores[m.idx];
+    const decision = state.draftDecision[m.idx];
+    const vals = ov('draft:' + m.idx, { channel: d[1], when: d[6] });
+    const when = parseWhen(vals.when);
+    return `<div class="modal-scrim"><div class="modal" role="dialog" aria-modal="true">
+      <div class="modal__head"><div><h2 class="modal__title">${d[0]}</h2><span class="muted small">${d[3]}</span></div>
+        <button class="icon-button" data-close-modal aria-label="Cerrar">✕</button></div>
+      <p class="modal__body">${esc(d[4])}</p>
+      <div class="modal__field"><label for="modal-draft-channel">Canal</label>
+        <select id="modal-draft-channel" class="text-input">${CP_DATA.canales.map((c) => `<option ${c[0] === vals.channel ? 'selected' : ''} ${c[1] === 'bad' ? 'disabled' : ''}>${c[0]}</option>`).join('')}</select></div>
+      <div class="modal__field"><label>Cuándo</label><div class="row"><input id="modal-draft-date" type="date" class="text-input" value="${when.date}" /><input id="modal-draft-time" type="time" class="text-input" value="${when.time}" /></div></div>
+      ${decision
+        ? `<div>${pill(decision === 'aprobada' ? 'Aprobada' : 'Rechazada', decision === 'aprobada' ? 'ok' : 'bad')}</div>`
+        : `<div class="row row--end"><button class="btn btn--ghost btn--sm" data-save-draft="${m.idx}">Guardar cambios</button><button class="btn btn--danger btn--sm" data-reject-draft="${m.idx}">Rechazar</button><button class="btn btn--primary btn--sm" data-approve-draft="${m.idx}">Aprobar</button></div>`}
+    </div></div>`;
+  }
+  if (m.type === 'metric') {
+    const rows = CP_DATA.metricDetalle[m.channel] || [];
+    return `<div class="modal-scrim"><div class="modal modal--wide" role="dialog" aria-modal="true">
+      <div class="modal__head"><h2 class="modal__title">${m.channel} · detalle</h2><button class="icon-button" data-close-modal aria-label="Cerrar">✕</button></div>
+      <div><h3 class="muted small" style="margin:0 0 var(--space-2)">Evolución del alcance</h3>${evolutionChart(m.channel, CP_DATA.evolucionSemanas, CP_DATA.evolucionAlcance[m.channel] || [])}</div>
+      <div><h3 class="muted small" style="margin:0 0 var(--space-2)">Por publicación</h3>
+      <table class="data-table"><thead><tr><th>Pieza</th><th>Publicado</th><th class="data-table__num">Alcance</th><th class="data-table__num">Me gusta</th><th class="data-table__num">Comentarios</th><th class="data-table__num">Compartidos</th><th class="data-table__num">Clics</th></tr></thead><tbody>
+        ${rows.map((r) => `<tr><td><span class="data-table__primary">${r[0]}</span></td><td class="mono">${r[1]}</td><td class="data-table__num mono">${r[2]}</td><td class="data-table__num mono">${r[3]}</td><td class="data-table__num mono">${r[4]}</td><td class="data-table__num mono">${r[5]}</td><td class="data-table__num mono">${r[6]}</td></tr>`).join('')}
+      </tbody></table></div>
+    </div></div>`;
+  }
+  if (m.type === 'edit') {
+    const base = m.source === 'cal'
+      ? { title: CP_DATA.calendario[m.idx][2], when: CP_DATA.calendario[m.idx][1], channel: CP_DATA.calendario[m.idx][3] }
+      : { title: CP_DATA.publicaciones[m.idx][0], when: CP_DATA.publicaciones[m.idx][2], channel: CP_DATA.publicaciones[m.idx][1] };
+    const cur = ov(`${m.source}:${m.idx}`, base);
+    const when = parseWhen(cur.when);
+    return `<div class="modal-scrim"><div class="modal" role="dialog" aria-modal="true">
+      <div class="modal__head"><h2 class="modal__title">Editar publicación</h2><button class="icon-button" data-close-modal aria-label="Cerrar">✕</button></div>
+      <div class="modal__field"><label for="modal-title">Título</label><input id="modal-title" class="text-input" value="${esc(cur.title)}" /></div>
+      <div class="modal__field"><label>Cuándo</label><div class="row"><input id="modal-when-date" type="date" class="text-input" value="${when.date}" /><input id="modal-when-time" type="time" class="text-input" value="${when.time}" /></div></div>
+      <div class="modal__field"><label for="modal-channel">Canal</label>
+        <select id="modal-channel" class="text-input">${CP_DATA.canales.map((c) => `<option ${c[0] === cur.channel ? 'selected' : ''} ${c[1] === 'bad' ? 'disabled' : ''}>${c[0]}</option>`).join('')}</select></div>
+      <p class="muted small">Postiz reprograma el envío con la nueva fecha. Si cambias de canal, usa el texto ya adaptado para ese canal (o pide una nueva adaptación).</p>
+      <div class="row row--end"><button class="btn btn--ghost btn--sm" data-close-modal>Cancelar</button><button class="btn btn--primary btn--sm" data-save-edit="${m.source}:${m.idx}">Guardar cambios</button></div>
+    </div></div>`;
+  }
+  if (m.type === 'create') {
+    return `<div class="modal-scrim"><div class="modal" role="dialog" aria-modal="true">
+      <div class="modal__head"><h2 class="modal__title">Nueva publicación</h2><button class="icon-button" data-close-modal aria-label="Cerrar">✕</button></div>
+      <div class="modal__field"><label for="modal-new-body">Texto</label><textarea id="modal-new-body" class="text-input" rows="4" placeholder="Escribe el post…"></textarea></div>
+      <div class="modal__field"><label for="modal-new-tags">Hashtags</label><input id="modal-new-tags" class="text-input" placeholder="#pyme #rrhh" /></div>
+      <div class="modal__field"><label for="modal-new-image">Imagen</label><input id="modal-new-image" type="file" class="text-input" accept="image/*" /></div>
+      <div class="modal__field"><label for="modal-new-channel">Canal</label>
+        <select id="modal-new-channel" class="text-input">${CP_DATA.canales.map((c) => `<option ${c[1] === 'bad' ? 'disabled' : ''}>${c[0]}</option>`).join('')}</select></div>
+      <div class="modal__field"><label>Cuándo</label><div class="row"><input id="modal-new-date" type="date" class="text-input" /><input id="modal-new-time" type="time" class="text-input" value="09:00" /></div></div>
+      <p class="muted small">Se programa directamente, sin pasar por Borradores: lo escribes tú, no hace falta aprobarlo.</p>
+      <div class="row row--end"><button class="btn btn--ghost btn--sm" data-close-modal>Cancelar</button><button class="btn btn--primary btn--sm" data-save-create>Programar</button></div>
+    </div></div>`;
+  }
+  return '';
+}
+
+/* ---------- Eventos ---------- */
+document.addEventListener('click', (e) => {
+  if (e.target.classList && e.target.classList.contains('modal-scrim')) { state.modal = null; render(); return; }
+  const t = e.target.closest('[data-layout],[data-ws],[data-screen],[data-go],[data-convo],[data-ctab],[data-calview],[data-edit],[data-draft],[data-metric],[data-pause],[data-approve-draft],[data-reject-draft],[data-save-draft],[data-save-edit],[data-close-modal],[data-chat],[data-chat-approve],[data-chat-reject],[data-new-post],[data-save-create],[data-open-chat],[data-close-chat],[data-toggle-nav],[data-close-nav]');
+  if (!t) return;
+  e.preventDefault();
+  if (t.dataset.layout) { state.layout = t.dataset.layout; state.workspace = 'trabajo'; state.screen = 'inicio';
+    document.querySelectorAll('[data-layout]').forEach((b) => b.setAttribute('aria-pressed', String(b === t))); }
+  else if (t.dataset.go) { if (t.dataset.ws && state.layout === 'admin') state.workspace = t.dataset.ws; state.screen = t.dataset.go; }
+  else if (t.dataset.ws) { state.workspace = t.dataset.ws; state.screen = WORKSPACES[t.dataset.ws].home; }
+  else if (t.dataset.screen) { state.screen = t.dataset.screen; state.navOpen = false; }
+  else if (t.dataset.convo) { state.convo = Number(t.dataset.convo); }
+  else if (t.dataset.ctab) { state.ctab = t.dataset.ctab; }
+  else if (t.dataset.calview) { state.calView = t.dataset.calview; }
+  else if (t.dataset.draft) { state.modal = { type: 'draft', idx: Number(t.dataset.draft) }; }
+  else if (t.dataset.metric) { state.modal = { type: 'metric', channel: t.dataset.metric }; }
+  else if (t.dataset.pause) { const i = Number(t.dataset.pause); state.pausedPosts.has(i) ? state.pausedPosts.delete(i) : state.pausedPosts.add(i); }
+  else if (t.dataset.edit) { const [source, idx] = t.dataset.edit.split(':'); state.modal = { type: 'edit', source, idx: Number(idx) }; }
+  else if (t.dataset.saveDraft) { state.overrides['draft:' + t.dataset.saveDraft] = { channel: $('#modal-draft-channel').value, when: formatWhen($('#modal-draft-date').value, $('#modal-draft-time').value) }; state.modal = null; }
+  else if (t.dataset.approveDraft) {
+    const idx = Number(t.dataset.approveDraft);
+    state.draftDecision[idx] = 'aprobada';
+    if (!state.draftPublished.has(idx)) {
+      state.draftPublished.add(idx);
+      const d = CP_DATA.borradores[idx];
+      const vals = ov('draft:' + idx, { channel: d[1], when: d[6] });
+      CP_DATA.publicaciones.push([d[0], vals.channel, vals.when, 'warn', 'Programado', false]);
+    }
+    state.modal = null;
+  }
+  else if (t.dataset.rejectDraft) { state.draftDecision[Number(t.dataset.rejectDraft)] = 'rechazada'; state.modal = null; }
+  else if (t.dataset.saveEdit) { state.overrides[t.dataset.saveEdit] = { title: $('#modal-title').value, when: formatWhen($('#modal-when-date').value, $('#modal-when-time').value), channel: $('#modal-channel').value }; state.modal = null; }
+  else if (t.hasAttribute('data-new-post')) { state.modal = { type: 'create' }; }
+  else if (t.hasAttribute('data-save-create')) {
+    const tags = $('#modal-new-tags').value.trim();
+    const body = ($('#modal-new-body').value.trim() || 'Publicación sin texto') + (tags ? '\n\n' + tags : '');
+    const channel = $('#modal-new-channel').value;
+    const when = formatWhen($('#modal-new-date').value, $('#modal-new-time').value);
+    state.manualPostIdx.add(CP_DATA.publicaciones.length);
+    CP_DATA.publicaciones.push([body, channel, when, 'warn', 'Programado', false]);
+    state.modal = null;
+  }
+  else if (t.hasAttribute('data-close-modal')) { state.modal = null; }
+  else if (t.dataset.chat) { state.chatAnchor = t.dataset.chat; state.screen = 'conversaciones'; state.workspace = 'trabajo'; state.convo = 2; }
+  else if (t.dataset.chatApprove) { state.chatDecision[t.dataset.chatApprove] = 'aprobada'; }
+  else if (t.dataset.chatReject) { state.chatDecision[t.dataset.chatReject] = 'rechazada'; }
+  else if (t.hasAttribute('data-open-chat')) { state.floatingChatOpen = true; }
+  else if (t.hasAttribute('data-close-chat')) { state.floatingChatOpen = false; }
+  else if (t.hasAttribute('data-toggle-nav')) { state.navOpen = !state.navOpen; }
+  else if (t.hasAttribute('data-close-nav')) { state.navOpen = false; }
+  render();
+});
+// Enlace directo para revisar: index.html#admin/integraciones  |  #usuario/aprobaciones
+const [hl, hs] = location.hash.slice(1).split('/');
+if (PEOPLE[hl]) {
+  state.layout = hl;
+  document.querySelectorAll('[data-layout]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.layout === hl)));
+  if (hs && (SCREENS[hs] || PENDING[hs])) {
+    state.screen = hs;
+    state.workspace = WORKSPACES.admin.groups.some((g) => g.items.some((i) => i.id === hs)) ? 'admin' : 'trabajo';
+  }
+}
+render();
+</script>
+</body>
+</html>

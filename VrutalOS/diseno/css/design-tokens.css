@@ -1,0 +1,79 @@
+/* Único archivo con valores crudos. Todo lo demás usa var(--…). Marca: Brand Book v0.9 */
+:root {
+  /* Marca */
+  --color-black: #0b0c0f;   /* Vrutal Black — fondo dominante */
+  --color-violet: #6c4cff;  /* Señal Violeta — acción/sistema, <20 % */
+  --color-lime: #c6ff3d;    /* Verde Señal — activo/ok, <5 % */
+  --color-bone: #f7f7f5;    /* Blanco Hueso */
+  --color-slate: #8a8f98;   /* Gris Pizarra */
+  /* Excepción aprobada (2026-09-26): solo error/destructivo, siempre con texto. Pendiente ratificar en Brand Book */
+  --color-danger: #ff5c5c;
+
+  /* Semánticos */
+  --bg-app: var(--color-black);
+  --bg-surface: color-mix(in srgb, var(--color-bone) 4%, var(--color-black));
+  --bg-surface-raised: color-mix(in srgb, var(--color-bone) 8%, var(--color-black));
+  --bg-overlay: color-mix(in srgb, var(--color-black) 88%, transparent);
+  --border-subtle: color-mix(in srgb, var(--color-bone) 11%, transparent);
+  --text-primary: var(--color-bone);
+  --text-secondary: var(--color-slate);
+  --action: var(--color-violet);
+  --action-hover: color-mix(in srgb, var(--color-violet) 85%, var(--color-bone));
+  --action-subtle: color-mix(in srgb, var(--color-violet) 16%, transparent);
+  --action-text: color-mix(in srgb, var(--color-violet) 55%, var(--color-bone)); /* violeta legible en texto pequeño */
+  --action-glow: color-mix(in srgb, var(--color-violet) 22%, transparent);
+  --active-signal: var(--color-lime);
+  --active-subtle: color-mix(in srgb, var(--color-lime) 12%, transparent);
+  --danger: var(--color-danger);
+  --danger-subtle: color-mix(in srgb, var(--color-danger) 14%, transparent);
+  --danger-border: color-mix(in srgb, var(--color-danger) 40%, transparent);
+  --focus-ring: var(--color-bone);
+  --shadow-pop: 0 20px 40px -12px var(--color-black);
+
+  /* Tipografía */
+  --font-sans: 'Inter', system-ui, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+  --text-2xs: 0.625rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 0.9375rem;
+  --text-lg: 1.25rem;
+  --text-stat: 1.75rem;
+  --text-h1: clamp(1.375rem, 1.2rem + 0.8vw, 1.75rem);
+  --leading: 1.5;
+
+  /* Espaciado, forma, capas, tamaños */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+  --sidebar-width: 15rem;
+  --login-width: 25rem;
+  --logo-login-height: 4rem;
+  --logo-side-height: 1.875rem;
+  --control-height: 2.5rem;
+  --captcha-height: 4.0625rem; /* 65px, alto fijo del widget de Turnstile */
+  --z-topbar: 10;
+  --z-sidebar: 20;
+  --z-menu: 30;
+
+  color-scheme: dark;
+}
+
+/* Plataforma = taller: negro teñido de violeta y retícula, para no confundirlo nunca con Operación */
+[data-workspace='plataforma'] {
+  --bg-app: color-mix(in srgb, var(--color-violet) 7%, var(--color-black));
+  --bg-surface: color-mix(in srgb, var(--color-bone) 4%, var(--bg-app));
+  --bg-surface-raised: color-mix(in srgb, var(--color-bone) 8%, var(--bg-app));
+  --bg-overlay: color-mix(in srgb, var(--bg-app) 88%, transparent);
+  --border-subtle: color-mix(in srgb, color-mix(in srgb, var(--color-violet) 40%, var(--color-bone)) 14%, transparent);
+  --workspace-grid: radial-gradient(color-mix(in srgb, var(--color-bone) 6%, transparent) 1px, transparent 1px) 0 0 / 20px 20px;
+}

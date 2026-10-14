@@ -1,0 +1,256 @@
+/* Botones */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn--sm {
+  min-height: auto;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
+}
+
+.btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--action);
+  color: var(--text-primary);
+}
+
+.btn--primary:hover:not([disabled]) {
+  background: var(--action-hover);
+}
+
+.btn--ghost {
+  background: transparent;
+  border-color: var(--border-subtle);
+}
+
+.btn--ghost:hover:not([disabled]) {
+  background: var(--bg-surface-raised);
+}
+
+.btn--block {
+  width: 100%;
+}
+
+.btn-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  text-decoration: underline;
+  text-decoration-color: var(--action);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* Campos */
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.form-field__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.form-field__label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.text-input {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-app);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.text-input:focus-visible {
+  outline: none;
+  border-color: var(--action);
+  box-shadow: 0 0 0 3px var(--action-subtle);
+}
+
+.password-input {
+  position: relative;
+}
+
+.password-input .text-input {
+  padding-right: calc(var(--space-10) * 2);
+}
+
+.password-input__toggle {
+  position: absolute;
+  top: 50%;
+  right: var(--space-2);
+  transform: translateY(-50%);
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+/* Avisos */
+.notice {
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+}
+
+.notice--error {
+  background: var(--danger-subtle);
+  border: 1px solid var(--danger-border);
+  color: var(--text-primary);
+}
+
+.notice--error::before {
+  content: '⚠ ';
+  color: var(--danger);
+}
+
+.notice--info {
+  background: var(--action-subtle);
+  color: var(--text-primary);
+}
+
+/* Estado vacío */
+.empty-state {
+  max-width: 40rem;
+  padding: var(--space-8);
+  background: var(--bg-surface);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.empty-state__title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.empty-state__body {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.loading-state {
+  margin: 0;
+  padding: var(--space-6) 0;
+  color: var(--text-secondary);
+}
+
+.error-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+/* Filtros tipo chip (p. ej. Todos / Mis clientes) */
+.chip-group {
+  display: inline-flex;
+  gap: var(--space-2);
+}
+
+.chip {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.chip[aria-pressed='true'] {
+  border-color: var(--action);
+  background: var(--action-subtle);
+  color: var(--text-primary);
+}
+
+/* Texto de apoyo bajo el título de una página */
+.lead {
+  margin: 0 0 var(--space-5);
+  max-width: 44rem;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.muted {
+  color: var(--text-secondary);
+}
+
+.form-field__hint {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+/* Rejilla de tarjetas (especialistas, integraciones) */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  gap: var(--space-4);
+}
+
+.small {
+  font-size: var(--text-xs);
+}
+
+.btn--danger {
+  background: none;
+  border-color: var(--danger-border);
+  color: var(--text-primary);
+}
+
+.btn--danger:hover:not([disabled]) {
+  background: var(--danger-subtle);
+}
+
+/* Casilla */
+.check {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--action);
+  cursor: pointer;
+}
+
+.check:disabled {
+  cursor: not-allowed;
+}
