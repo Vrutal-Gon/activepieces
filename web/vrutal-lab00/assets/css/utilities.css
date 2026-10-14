@@ -1,0 +1,115 @@
+/* ==========================================================================
+   VRUTAL LAB01
+   Utilities
+   Version: 0.1.0
+   ========================================================================== */
+
+/* ===========================
+   DISPLAY
+   =========================== */
+
+.vr-hidden{
+    display:none;
+}
+
+.vr-block{
+    display:block;
+}
+
+.vr-inline{
+    display:inline;
+}
+
+.vr-inline-block{
+    display:inline-block;
+}
+
+/* ===========================
+   TEXT ALIGN
+   =========================== */
+
+.vr-text-left{
+    text-align:left;
+}
+
+.vr-text-center{
+    text-align:center;
+}
+
+.vr-text-right{
+    text-align:right;
+}
+
+/* ===========================
+   TEXT COLORS
+   =========================== */
+
+.vr-text-primary{
+    color:var(--vr-color-primary);
+}
+
+.vr-text-secondary{
+    color:var(--vr-color-secondary);
+}
+
+.vr-text-muted{
+    color:var(--vr-color-text-secondary);
+}
+
+/* ===========================
+   WIDTH
+   =========================== */
+
+.vr-w-full{
+    width:100%;
+}
+
+.vr-max-content{
+    width:max-content;
+}
+
+/* ===========================
+   SPACING
+   =========================== */
+
+.vr-mt-0{margin-top:0;}
+.vr-mt-4{margin-top:var(--vr-space-4);}
+.vr-mt-6{margin-top:var(--vr-space-6);}
+.vr-mt-8{margin-top:var(--vr-space-8);}
+
+.vr-mb-0{margin-bottom:0;}
+.vr-mb-4{margin-bottom:var(--vr-space-4);}
+.vr-mb-6{margin-bottom:var(--vr-space-6);}
+.vr-mb-8{margin-bottom:var(--vr-space-8);}
+
+.vr-p-4{padding:var(--vr-space-4);}
+.vr-p-6{padding:var(--vr-space-6);}
+.vr-p-8{padding:var(--vr-space-8);}
+
+/* ===========================
+   FLEX HELPERS
+   =========================== */
+
+.vr-items-center{
+    align-items:center;
+}
+
+.vr-justify-center{
+    justify-content:center;
+}
+
+.vr-justify-between{
+    justify-content:space-between;
+}
+
+.vr-gap-2{
+    gap:var(--vr-space-2);
+}
+
+.vr-gap-4{
+    gap:var(--vr-space-4);
+}
+
+.vr-gap-6{
+    gap:var(--vr-space-6);
+}

@@ -1,0 +1,169 @@
+/**
+ * ==========================================================================
+ * VRUTAL LABS
+ * BASE
+ * ==========================================================================
+ */
+
+/* ==========================================================================
+   RESET
+========================================================================== */
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+/* ==========================================================================
+   DOCUMENT
+========================================================================== */
+
+html {
+	scroll-behavior: smooth;
+	-webkit-text-size-adjust: 100%;
+}
+
+body {
+
+	font-family: var(--font-body);
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-normal);
+	line-height: var(--line-height-normal);
+
+	background: var(--color-background);
+	color: var(--color-text);
+
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+
+	overflow-x: hidden;
+
+}
+
+/* ==========================================================================
+   TYPOGRAPHY
+========================================================================== */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+
+	font-family: var(--font-heading);
+	font-weight: var(--font-weight-bold);
+	line-height: var(--line-height-tight);
+
+	text-wrap: balance;
+
+}
+
+p {
+
+	color: var(--color-text-muted);
+
+	text-wrap: pretty;
+
+}
+
+/* ==========================================================================
+   LINKS
+========================================================================== */
+
+a {
+
+	color: inherit;
+	text-decoration: none;
+
+	transition: color var(--transition-fast);
+
+}
+
+a:hover {
+
+	color: var(--color-primary);
+
+}
+
+/* ==========================================================================
+   MEDIA
+========================================================================== */
+
+img,
+picture,
+video,
+canvas,
+svg {
+
+	display: block;
+
+	max-width: 100%;
+
+}
+
+/* ==========================================================================
+   LISTS
+========================================================================== */
+
+ul,
+ol {
+
+	list-style: none;
+
+}
+
+/* ==========================================================================
+   FORMS
+========================================================================== */
+
+button,
+input,
+textarea,
+select {
+
+	font: inherit;
+
+	color: inherit;
+
+	background: transparent;
+
+	border: none;
+
+	outline: none;
+
+}
+
+button {
+
+	cursor: pointer;
+
+}
+
+/* ==========================================================================
+   SELECTION
+========================================================================== */
+
+::selection {
+
+	background: var(--color-primary);
+
+	color: #fff;
+
+}
+
+/* ==========================================================================
+   SECTIONS
+========================================================================== */
+
+section {
+
+	position: relative;
+
+	padding: var(--section-padding) 0;
+
+}

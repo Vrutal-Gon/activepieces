@@ -1,0 +1,172 @@
+/**
+ * ==========================================================================
+ * VRUTAL LABS
+ * LAYOUT
+ * ==========================================================================
+ */
+
+/* ==========================================================================
+   MAIN
+========================================================================== */
+
+.vr-main {
+	min-height: 100vh;
+}
+
+/* ==========================================================================
+   CONTAINER
+========================================================================== */
+
+.vr-container {
+
+	width: min(
+		calc(100% - (var(--container-padding) * 2)),
+		var(--container-width)
+	);
+
+	margin-inline: auto;
+
+}
+
+/* ==========================================================================
+   SECTION HEADER
+========================================================================== */
+
+.vr-section-heading {
+
+	max-width: 760px;
+
+	margin: 0 auto var(--space-8);
+
+	text-align: center;
+
+}
+
+.vr-section-label {
+
+	display: inline-flex;
+
+	align-items: center;
+
+	gap: var(--space-2);
+
+	margin-bottom: var(--space-4);
+
+	font-size: var(--font-size-sm);
+
+	font-weight: var(--font-weight-semibold);
+
+	letter-spacing: .18em;
+
+	text-transform: uppercase;
+
+	color: var(--color-primary);
+
+}
+
+.vr-section-title {
+
+	font-size: clamp(
+		2rem,
+		5vw,
+		4rem
+	);
+
+	margin-bottom: var(--space-5);
+
+}
+
+.vr-section-description {
+
+	font-size: var(--font-size-lg);
+
+	max-width: 700px;
+
+	margin-inline: auto;
+
+}
+
+/* ==========================================================================
+   GRID
+========================================================================== */
+
+.vr-grid {
+
+	display: grid;
+
+	gap: var(--space-6);
+
+}
+
+.vr-grid-2 {
+
+	grid-template-columns: repeat(2,1fr);
+
+}
+
+.vr-grid-3 {
+
+	grid-template-columns: repeat(3,1fr);
+
+}
+
+/* ==========================================================================
+   FLEX
+========================================================================== */
+
+.vr-flex {
+
+	display: flex;
+
+}
+
+.vr-flex-center {
+
+	display: flex;
+
+	align-items: center;
+
+	justify-content: center;
+
+}
+
+.vr-flex-between {
+
+	display: flex;
+
+	align-items: center;
+
+	justify-content: space-between;
+
+}
+
+/* ==========================================================================
+   STACK
+========================================================================== */
+
+.vr-stack > * + * {
+
+	margin-top: var(--space-5);
+
+}
+
+/* ==========================================================================
+   RESPONSIVE
+========================================================================== */
+
+@media (max-width:992px){
+
+	.vr-grid-2,
+	.vr-grid-3{
+
+		grid-template-columns:1fr;
+
+	}
+
+	.vr-section-heading{
+
+		margin-bottom:var(--space-7);
+
+	}
+
+}

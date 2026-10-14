@@ -1,0 +1,285 @@
+/**
+ * ==========================================================================
+ * VRUTAL LABS
+ * HOME
+ * ==========================================================================
+ */
+
+
+/* ==========================================================================
+   HERO
+========================================================================== */
+
+.vr-hero{
+
+    position:relative;
+
+    min-height:100vh;
+
+    display:flex;
+
+    align-items:center;
+
+    overflow:hidden;
+
+}
+
+.vr-hero .vr-container{
+
+    position:relative;
+
+    z-index:2;
+
+}
+
+.vr-hero__content{
+
+    max-width:760px;
+
+}
+
+.vr-hero__title{
+
+    margin-bottom:var(--space-5);
+
+}
+
+.vr-hero__lead{
+
+    max-width:620px;
+
+    margin-bottom:var(--space-6);
+
+}
+
+.vr-hero__actions{
+
+    display:flex;
+
+    gap:var(--space-4);
+
+    margin-top:var(--space-7);
+
+}
+
+#vr-network-canvas{
+
+    position:absolute;
+
+    inset:0;
+
+    opacity:.45;
+
+    pointer-events:none;
+
+}
+
+
+/* ==========================================================================
+   SECTIONS
+========================================================================== */
+
+.vr-problem,
+.vr-os-preview,
+.vr-labs-preview{
+
+    position:relative;
+
+    padding:var(--space-9) 0;
+
+}
+
+.vr-problem{
+
+    background:linear-gradient(
+        180deg,
+        transparent,
+        rgba(255,255,255,.02)
+    );
+
+}
+
+.vr-os-preview{
+
+    background:#090909;
+
+}
+
+.vr-labs-preview{
+
+    background:#050505;
+
+}
+
+
+/* ==========================================================================
+   CARDS
+========================================================================== */
+
+.vr-problem__grid,
+.vr-labs__grid{
+
+    margin-top:var(--space-7);
+
+}
+
+.vr-card{
+
+    height:100%;
+
+}
+
+.vr-card h3{
+
+    margin-bottom:var(--space-4);
+
+}
+
+.vr-card p{
+
+    margin-bottom:var(--space-5);
+
+}
+
+
+/* ==========================================================================
+   VRUTAL OS
+========================================================================== */
+
+.vr-os{
+
+    display:grid;
+
+    grid-template-columns:1fr 1fr;
+
+    align-items:center;
+
+    gap:6rem;
+
+}
+
+.vr-os__visual{
+
+    min-height:520px;
+
+    border-radius:var(--radius-xl);
+
+    background:
+
+        radial-gradient(circle at center,
+            rgba(255,107,0,.18),
+            transparent 60%
+        ),
+
+        linear-gradient(
+            135deg,
+            #0d0d0d,
+            #171717
+        );
+
+    border:1px solid var(--color-border);
+
+}
+
+.vr-os__content h2{
+
+    margin-bottom:var(--space-5);
+
+}
+
+.vr-os__content p{
+
+    margin-bottom:var(--space-6);
+
+}
+
+
+/* ==========================================================================
+   LABS
+========================================================================== */
+
+.vr-labs-preview{
+
+    text-align:center;
+
+}
+
+.vr-labs-preview .vr-btn{
+
+    margin-top:var(--space-6);
+
+}
+
+
+/* ==========================================================================
+   MICRO ANIMATIONS
+========================================================================== */
+
+.vr-card{
+
+    transition:
+
+        transform .35s ease,
+
+        border-color .35s ease,
+
+        background .35s ease;
+
+}
+
+.vr-card:hover{
+
+    transform:translateY(-8px);
+
+    border-color:rgba(255,255,255,.18);
+
+}
+
+.vr-btn{
+
+    transition:all .3s ease;
+
+}
+
+.vr-btn:hover{
+
+    transform:translateY(-2px);
+
+}
+
+
+/* ==========================================================================
+   RESPONSIVE
+========================================================================== */
+
+@media(max-width:992px){
+
+    .vr-hero{
+
+        min-height:auto;
+
+        padding-top:140px;
+
+    }
+
+    .vr-hero__actions{
+
+        flex-direction:column;
+
+        align-items:flex-start;
+
+    }
+
+    .vr-os{
+
+        grid-template-columns:1fr;
+
+    }
+
+    .vr-os__visual{
+
+        min-height:340px;
+
+    }
+
+}

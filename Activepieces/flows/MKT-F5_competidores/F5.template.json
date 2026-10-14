@@ -1,0 +1,261 @@
+{
+  "name": "MKT-F5 · Ficha comparativa de competidores",
+  "type": "SHARED",
+  "summary": "marketing_analyst · TSK-000178 · Recibe → Consulta → Consulta → Ordena → Ejecuta → Deja rastro",
+  "description": "Vrutal Labs · Marketing. Esqueleto generado desde el diagrama (ver MARKETING_flujos). Los pasos «pendiente» fallan a propósito.",
+  "tags": [
+    "vrutal",
+    "marketing",
+    "marketing_analyst",
+    "TSK-000178"
+  ],
+  "blogUrl": "",
+  "metadata": {},
+  "author": "Vrutal Labs",
+  "categories": [],
+  "pieces": [
+    "@activepieces/piece-google-sheets",
+    "@activepieces/piece-schedule"
+  ],
+  "flows": [
+    {
+      "displayName": "MKT-F5 · Ficha comparativa de competidores",
+      "trigger": {
+        "name": "trigger",
+        "valid": true,
+        "displayName": "Recibe · día 1 de cada mes, 09:00",
+        "type": "PIECE_TRIGGER",
+        "settings": {
+          "pieceName": "@activepieces/piece-schedule",
+          "pieceVersion": "0.1.22",
+          "triggerName": "every_month",
+          "propertySettings": {},
+          "input": {
+            "day_of_the_month": 1,
+            "hour_of_the_day": 9,
+            "timezone": "Europe/Madrid"
+          }
+        },
+        "lastUpdatedDate": "2026-10-03T00:00:00.000Z",
+        "nextAction": {
+          "name": "step_1",
+          "valid": false,
+          "skip": false,
+          "displayName": "Consulta · competidores definidos del cliente",
+          "type": "PIECE",
+          "settings": {
+            "pieceName": "@activepieces/piece-google-sheets",
+            "pieceVersion": "0.16.4",
+            "actionName": "get-many-rows",
+            "propertySettings": {},
+            "input": {
+              "auth": "{{connections['HirdYf0okm7HontbOX9RE']}}",
+              "includeTeamDrives": false,
+              "spreadsheetId": "1QILqdaxNUUYoHUyLsoDgHe45QP_LgGKPnwFhdKmM4BQ",
+              "sheetId": null,
+              "first_row_headers": true
+            },
+            "errorHandlingOptions": {
+              "retryOnFailure": {
+                "value": false
+              },
+              "continueOnFailure": {
+                "value": false
+              }
+            }
+          },
+          "nextAction": {
+            "name": "step_2",
+            "valid": false,
+            "skip": false,
+            "displayName": "Consulta · páginas públicas de cada competidor",
+            "type": "CODE",
+            "settings": {
+              "input": {},
+              "sourceCode": {
+                "code": "/* vrutal-block { \"block\": \"Consulta · páginas públicas de cada competidor\", \"kind\": \"context\", \"pending\": true } */\n// PASO PENDIENTE DE CONFIGURAR. Falla a proposito (fail-closed): hasta que lo sustituyas, el flujo no actua.\n// Que hay que poner aqui: Leer las páginas públicas de cada URL de `{{step_1}}` (precios, mensajes, canales) y devolver una lista de objetos con los campos de CompetitorCard. Solo URLs de la hoja; sin seguir enlaces a otros dominios. Herramienta sin decidir (HTTP + extracción, o agente).\nexport const code = async (_inputs: Record<string, never>) => {\n  throw new Error('PENDIENTE DE CONFIGURAR · Consulta · páginas públicas de cada competidor: Leer las páginas públicas de cada URL de `{{step_1}}` (precios, mensajes, canales) y devolver una lista de objetos con los campos de CompetitorCard');\n};\n",
+                "packageJson": "{}"
+              },
+              "errorHandlingOptions": {
+                "retryOnFailure": {
+                  "value": false
+                },
+                "continueOnFailure": {
+                  "value": false
+                }
+              }
+            },
+            "nextAction": {
+              "name": "step_3",
+              "valid": true,
+              "skip": false,
+              "displayName": "Ordena · CompetitorCard",
+              "type": "CODE",
+              "settings": {
+                "input": {
+                  "sources": [
+                    "{{step_2}}"
+                  ]
+                },
+                "sourceCode": {
+                  "code": "/* vrutal-block {\n  \"block\": \"Ordena · a CompetitorCard\",\n  \"kind\": \"normalize\",\n  \"variant\": {},\n  \"consumes\": [\"salida del paso anterior\"],\n  \"produces\": \"CompetitorCard\",\n  \"inputs\": {\"sources\": [\"{{step_2}}\"]}\n} */\n// Paso Code de Activepieces. Convierte la salida anterior en filas CompetitorCard validadas.\n// Fail-closed: si no queda ninguna fila valida, el paso falla y nada se escribe.\n// Contrato: nuevo, propuesto. Los campos son una PROPUESTA hasta que el founder los apruebe.\n\nconst FIELDS: { name: string; req: boolean; enum: string[] | null; default: string | null; sourced: boolean }[] = [{\"name\": \"competitor\", \"req\": true, \"enum\": null, \"default\": null, \"sourced\": false}, {\"name\": \"pricing\", \"req\": false, \"enum\": null, \"default\": null, \"sourced\": false}, {\"name\": \"messaging\", \"req\": true, \"enum\": null, \"default\": null, \"sourced\": false}, {\"name\": \"channels\", \"req\": false, \"enum\": null, \"default\": null, \"sourced\": false}, {\"name\": \"source_url\", \"req\": true, \"enum\": null, \"default\": null, \"sourced\": false}, {\"name\": \"observed_at\", \"req\": false, \"enum\": null, \"default\": null, \"sourced\": false}];\nconst LOOKUP_KEY = null;\nconst MAX_ROWS = 200; // techo por ejecucion\n\nconst clean = (v: unknown, max = 2000) =>\n  (Array.isArray(v) ? v.join(' | ') : String(v ?? ''))\n    .replace(/[\\u0000-\\u001f]/g, ' ')\n    .replace(/^[=+\\-@]/, \"'$&\") // anti formula: una celda nunca empieza por = + - @\n    .trim()\n    .slice(0, max);\n\nconst toList = (src: unknown): Record<string, unknown>[] => {\n  let data: unknown = src;\n  if (typeof data === 'string') {\n    const a = data.search(/[\\[{]/);\n    const last = Math.max(data.lastIndexOf('}'), data.lastIndexOf(']'));\n    if (a < 0 || last <= a) return [];\n    try { data = JSON.parse(data.slice(a, last + 1)); } catch { throw new Error('El JSON recibido no es valido'); }\n  }\n  const arr = Array.isArray(data)\n    ? data\n    : data && typeof data === 'object' && Array.isArray((data as { items?: unknown }).items)\n      ? (data as { items: unknown[] }).items\n      : data && typeof data === 'object' ? [data] : [];\n  return arr\n    .map((x) => (x && typeof x === 'object' && 'values' in x ? (x as { values: unknown }).values : x))\n    .filter((x): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x));\n};\n\nexport const code = async (inputs: { sources: unknown[]; lookup?: unknown }) => {\n  const ranAt = new Date().toISOString();\n  const day = ranAt.slice(0, 10);\n  const records = (inputs.sources ?? []).flatMap((s) => toList(s));\n  const lookupRows = LOOKUP_KEY ? toList(inputs.lookup) : [];\n  const byKey = new Map(lookupRows.map((r) => [String(r[LOOKUP_KEY as string] ?? ''), r]));\n\n  const rows: Record<string, string>[] = [];\n  let discarded = 0;\n  for (const rec of records) {\n    const extra = LOOKUP_KEY ? byKey.get(String(rec[LOOKUP_KEY] ?? '')) ?? {} : {};\n    const row: Record<string, string> = { fecha: day };\n    let ok = true;\n    for (const fd of FIELDS) {\n      let v = clean(rec[fd.name] ?? extra[fd.name] ?? fd.default ?? '');\n      if (fd.sourced && v && !/https?:\\/\\/|fuente:/i.test(v)) v = ''; // la prueba cita fuente o queda vacia\n      if (v && fd.enum && !fd.enum.includes(v.toLowerCase())) { ok = false; break; }\n      if (fd.enum && v) v = v.toLowerCase();\n      if (fd.req && !v) { ok = false; break; }\n      row[fd.name] = v;\n    }\n    if (!ok) { discarded++; continue; }\n    rows.push(row);\n    if (rows.length >= MAX_ROWS) break;\n  }\n  if (rows.length === 0) throw new Error('Ninguna fila valida para CompetitorCard (' + discarded + ' descartadas)');\n  return { rows, count: rows.length, discarded, ran_at: ranAt, rows_json: JSON.stringify(rows) };\n};\n",
+                  "packageJson": "{}"
+                },
+                "errorHandlingOptions": {
+                  "retryOnFailure": {
+                    "value": false
+                  },
+                  "continueOnFailure": {
+                    "value": false
+                  }
+                }
+              },
+              "nextAction": {
+                "name": "step_4",
+                "valid": false,
+                "skip": false,
+                "displayName": "Ejecuta · escribir la ficha",
+                "type": "PIECE",
+                "settings": {
+                  "pieceName": "@activepieces/piece-google-sheets",
+                  "pieceVersion": "0.16.4",
+                  "actionName": "google-sheets-insert-multiple-rows",
+                  "propertySettings": {
+                    "values": {
+                      "type": "MANUAL",
+                      "schema": {
+                        "values": {
+                          "type": "JSON",
+                          "required": true,
+                          "displayName": "JSON",
+                          "defaultValue": [
+                            {
+                              "column1": "value1",
+                              "column2": "value2"
+                            }
+                          ]
+                        },
+                        "markdown": {
+                          "type": "MARKDOWN",
+                          "variant": "INFO",
+                          "required": false,
+                          "displayName": "Markdown",
+                          "description": "Provide values in JSON format. Ensure the column names match the sheet's header."
+                        }
+                      }
+                    },
+                    "input_type": {
+                      "type": "MANUAL"
+                    },
+                    "check_for_duplicate_column": {
+                      "type": "MANUAL",
+                      "schema": {}
+                    }
+                  },
+                  "input": {
+                    "auth": "{{connections['HirdYf0okm7HontbOX9RE']}}",
+                    "includeTeamDrives": false,
+                    "spreadsheetId": "1QILqdaxNUUYoHUyLsoDgHe45QP_LgGKPnwFhdKmM4BQ",
+                    "sheetId": null,
+                    "input_type": "json",
+                    "values": {
+                      "values": "{{step_3.rows}}"
+                    },
+                    "overwrite": false,
+                    "check_for_duplicate": false,
+                    "check_for_duplicate_column": {},
+                    "headerRow": 1
+                  },
+                  "errorHandlingOptions": {
+                    "retryOnFailure": {
+                      "value": false
+                    },
+                    "continueOnFailure": {
+                      "value": false
+                    }
+                  }
+                },
+                "nextAction": {
+                  "name": "step_5",
+                  "valid": false,
+                  "skip": false,
+                  "displayName": "Deja rastro",
+                  "type": "PIECE",
+                  "settings": {
+                    "pieceName": "@activepieces/piece-google-sheets",
+                    "pieceVersion": "0.16.4",
+                    "actionName": "insert_row",
+                    "propertySettings": {
+                      "values": {
+                        "type": "MANUAL",
+                        "schema": {
+                          "A": {
+                            "type": "SHORT_TEXT",
+                            "required": false,
+                            "displayName": "fecha",
+                            "defaultValue": ""
+                          },
+                          "B": {
+                            "type": "SHORT_TEXT",
+                            "required": false,
+                            "displayName": "flujo",
+                            "defaultValue": ""
+                          },
+                          "C": {
+                            "type": "SHORT_TEXT",
+                            "required": false,
+                            "displayName": "tarea",
+                            "defaultValue": ""
+                          },
+                          "D": {
+                            "type": "SHORT_TEXT",
+                            "required": false,
+                            "displayName": "resultado",
+                            "defaultValue": ""
+                          },
+                          "E": {
+                            "type": "SHORT_TEXT",
+                            "required": false,
+                            "displayName": "detalle",
+                            "defaultValue": ""
+                          }
+                        }
+                      }
+                    },
+                    "input": {
+                      "auth": "{{connections['HirdYf0okm7HontbOX9RE']}}",
+                      "includeTeamDrives": false,
+                      "spreadsheetId": "1QILqdaxNUUYoHUyLsoDgHe45QP_LgGKPnwFhdKmM4BQ",
+                      "sheetId": 1870392726,
+                      "first_row_headers": true,
+                      "as_string": false,
+                      "values": {
+                        "A": "{{step_3.ran_at}}",
+                        "B": "MKT-F5 Ficha comparativa de competidores",
+                        "C": "TSK-000178",
+                        "D": "ok",
+                        "E": "{{step_3.count}} registros, {{step_3.discarded}} descartados"
+                      }
+                    },
+                    "errorHandlingOptions": {
+                      "retryOnFailure": {
+                        "value": false
+                      },
+                      "continueOnFailure": {
+                        "value": false
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "valid": false,
+      "schemaVersion": "20",
+      "notes": []
+    }
+  ],
+  "status": "PUBLISHED"
+}

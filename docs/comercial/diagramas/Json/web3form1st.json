@@ -1,0 +1,206 @@
+{
+  "version": "31.4.5",
+  "data": "<mxfile host=\"app.diagrams.net\"><diagram name=\"Página-1\" id=\"aeYk_Ap9ZlUeAiFhcBOF\"><mxGraphModel dx=\"534\" dy=\"311\" grid=\"1\" gridSize=\"10\" guides=\"1\" tooltips=\"1\" connect=\"0\" arrows=\"1\" fold=\"1\" page=\"1\" pageScale=\"1\" pageWidth=\"827\" pageHeight=\"1169\" math=\"0\" shadow=\"0\"><root><mxCell id=\"0\"/><mxCell id=\"1\" parent=\"0\"/><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-3\" edge=\"1\" parent=\"1\" source=\"nOT_Oyojrh0cy4lGdhRo-1\" style=\"edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;\" target=\"nOT_Oyojrh0cy4lGdhRo-2\"><mxGeometry relative=\"1\" as=\"geometry\"/></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-1\" parent=\"1\" style=\"rounded=0;whiteSpace=wrap;html=1;\" value=\"Web3Form&amp;nbsp;&lt;br&gt;www.vrutal-labs.com\" vertex=\"1\"><mxGeometry height=\"60\" width=\"120\" x=\"340\" y=\"210\" as=\"geometry\"/></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-6\" edge=\"1\" parent=\"1\" source=\"nOT_Oyojrh0cy4lGdhRo-2\" style=\"edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;\" target=\"nOT_Oyojrh0cy4lGdhRo-5\" value=\"si\"><mxGeometry relative=\"1\" as=\"geometry\"/></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-8\" edge=\"1\" parent=\"1\" source=\"nOT_Oyojrh0cy4lGdhRo-2\" style=\"edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;\" value=\"no\"><mxGeometry relative=\"1\" as=\"geometry\"><mxPoint x=\"400\" y=\"470\" as=\"targetPoint\"/></mxGeometry></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-2\" parent=\"1\" style=\"rhombus;whiteSpace=wrap;html=1;shapeInside=1;\" value=\"dominio genéricog\" vertex=\"1\"><mxGeometry height=\"80\" width=\"80\" x=\"360\" y=\"320\" as=\"geometry\"/></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-37\" edge=\"1\" parent=\"1\" source=\"nOT_Oyojrh0cy4lGdhRo-5\" style=\"edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;\" target=\"nOT_Oyojrh0cy4lGdhRo-9\"><mxGeometry relative=\"1\" as=\"geometry\"><Array as=\"points\"><mxPoint x=\"600\" y=\"500\"/></Array></mxGeometry></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-5\" parent=\"1\" style=\"rounded=0;whiteSpace=wrap;html=1;\" value=\"Envia Formulario&lt;br&gt;solicita info\" vertex=\"1\"><mxGeometry height=\"60\" width=\"120\" x=\"540\" y=\"330\" as=\"geometry\"/></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-11\" edge=\"1\" parent=\"1\" style=\"edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;\"><mxGeometry relative=\"1\" as=\"geometry\"><mxPoint x=\"400\" y=\"550\" as=\"sourcePoint\"/><mxPoint x=\"100\" y=\"600\" as=\"targetPoint\"/></mxGeometry></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-15\" edge=\"1\" parent=\"1\" source=\"nOT_Oyojrh0cy4lGdhRo-9\" style=\"edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;\" target=\"nOT_Oyojrh0cy4lGdhRo-14\"><mxGeometry relative=\"1\" as=\"geometry\"><Array as=\"points\"><mxPoint x=\"400\" y=\"550\"/><mxPoint x=\"280\" y=\"550\"/></Array></mxGeometry></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-21\" edge=\"1\" parent=\"1\" source=\"nOT_Oyojrh0cy4lGdhRo-9\" style=\"edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;\" target=\"nOT_Oyojrh0cy4lGdhRo-18\"><mxGeometry relative=\"1\" as=\"geometry\"><Array as=\"points\"><mxPoint x=\"400\" y=\"550\"/><mxPoint x=\"630\" y=\"550\"/></Array></mxGeometry></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-9\" parent=\"1\" style=\"rounded=0;whiteSpace=wrap;html=1;\" value=\"Investigación&lt;br&gt;AI\" vertex=\"1\"><mxGeometry height=\"60\" width=\"120\" x=\"340\" y=\"470\" as=\"geometry\"/></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-27\" edge=\"1\" parent=\"1\" source=\"nOT_Oyojrh0cy4lGdhRo-10\" style=\"edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;\"><mxGeometry relative=\"1\" as=\"geometry\"><Array as=\"points\"><mxPoint x=\"100.06\" y=\"710.06\"/><mxPoint x=\"400.06\" y=\"710.06\"/></Array><mxPoint x=\"400.08333333333326\" y=\"750.0833333333333\" as=\"targetPoint\"/></mxGeometry></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-10\" parent=\"1\" style=\"rounded=0;whiteSpace=wrap;html=1;\" value=\"linkedIn\" vertex=\"1\"><mxGeometry height=\"60\" width=\"120\" x=\"40\" y=\"580\" as=\"geometry\"/></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-29\" edge=\"1\" parent=\"1\" source=\"nOT_Oyojrh0cy4lGdhRo-14\" style=\"edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;\"><mxGeometry relative=\"1\" as=\"geometry\"><Array as=\"points\"><mxPoint x=\"280.06\" y=\"710.06\"/><mxPoint x=\"400.06\" y=\"710.06\"/></Array><mxPoint x=\"400\" y=\"750\" as=\"targetPoint\"/></mxGeometry></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-14\" parent=\"1\" style=\"rounded=0;whiteSpace=wrap;html=1;\" value=\"D&amp;amp;B\" vertex=\"1\"><mxGeometry height=\"60\" width=\"120\" x=\"220\" y=\"580\" as=\"geometry\"/></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-30\" edge=\"1\" parent=\"1\" source=\"nOT_Oyojrh0cy4lGdhRo-16\" style=\"edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;\"><mxGeometry relative=\"1\" as=\"geometry\"><Array as=\"points\"><mxPoint x=\"460.06\" y=\"710.06\"/><mxPoint x=\"400.06\" y=\"710.06\"/></Array><mxPoint x=\"400\" y=\"750\" as=\"targetPoint\"/></mxGeometry></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-16\" parent=\"1\" style=\"rounded=0;whiteSpace=wrap;html=1;\" value=\"Google\" vertex=\"1\"><mxGeometry height=\"60\" width=\"120\" x=\"400\" y=\"580\" as=\"geometry\"/></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-18\" parent=\"1\" style=\"rounded=0;whiteSpace=wrap;html=1;\" value=\"Web Empresa\" vertex=\"1\"><mxGeometry height=\"60\" width=\"120\" x=\"570\" y=\"580\" as=\"geometry\"/></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-22\" edge=\"1\" parent=\"1\" source=\"nOT_Oyojrh0cy4lGdhRo-9\" style=\"edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.612;entryY=0.033;entryDx=0;entryDy=0;entryPerimeter=0;\" target=\"nOT_Oyojrh0cy4lGdhRo-16\"><mxGeometry relative=\"1\" as=\"geometry\"><Array as=\"points\"><mxPoint x=\"400\" y=\"550\"/><mxPoint x=\"473.4\" y=\"550\"/></Array></mxGeometry></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-31\" edge=\"1\" parent=\"1\" source=\"nOT_Oyojrh0cy4lGdhRo-18\" style=\"edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.495;entryY=-0.015;entryDx=0;entryDy=0;entryPerimeter=0;\"><mxGeometry relative=\"1\" as=\"geometry\"><Array as=\"points\"><mxPoint x=\"630.06\" y=\"710.06\"/><mxPoint x=\"399.59\" y=\"710.06\"/></Array><mxPoint x=\"399.60000000000014\" y=\"748.8\" as=\"targetPoint\"/></mxGeometry></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-35\" edge=\"1\" parent=\"1\" source=\"nOT_Oyojrh0cy4lGdhRo-32\" style=\"edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;\" target=\"nOT_Oyojrh0cy4lGdhRo-34\"><mxGeometry relative=\"1\" as=\"geometry\"/></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-36\" edge=\"1\" parent=\"1\" source=\"nOT_Oyojrh0cy4lGdhRo-32\" style=\"edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;\" target=\"nOT_Oyojrh0cy4lGdhRo-33\"><mxGeometry relative=\"1\" as=\"geometry\"/></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-32\" parent=\"1\" style=\"rounded=0;whiteSpace=wrap;html=1;\" value=\"compilación&amp;nbsp;&lt;div&gt;de datos&lt;/div&gt;\" vertex=\"1\"><mxGeometry height=\"60\" width=\"120\" x=\"340\" y=\"750\" as=\"geometry\"/></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-33\" parent=\"1\" style=\"rounded=0;whiteSpace=wrap;html=1;\" value=\"Hubspot\" vertex=\"1\"><mxGeometry height=\"60\" width=\"120\" x=\"540\" y=\"750\" as=\"geometry\"/></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-39\" edge=\"1\" parent=\"1\" source=\"nOT_Oyojrh0cy4lGdhRo-34\" style=\"edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;\" target=\"nOT_Oyojrh0cy4lGdhRo-38\"><mxGeometry relative=\"1\" as=\"geometry\"/></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-34\" parent=\"1\" style=\"rounded=0;whiteSpace=wrap;html=1;\" value=\"Informe x emaill a vrutal\" vertex=\"1\"><mxGeometry height=\"60\" width=\"120\" x=\"140\" y=\"750\" as=\"geometry\"/></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-38\" parent=\"1\" style=\"rounded=0;whiteSpace=wrap;html=1;\" value=\"Enlace Calendly\" vertex=\"1\"><mxGeometry height=\"60\" width=\"120\" x=\"140\" y=\"880\" as=\"geometry\"/></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-40\" parent=\"1\" style=\"rounded=0;whiteSpace=wrap;html=1;\" value=\"Reunion cliente&lt;br&gt;Zoom&lt;div&gt;&lt;br/&gt;&lt;/div&gt;\" vertex=\"1\"><mxGeometry height=\"60\" width=\"120\" x=\"340\" y=\"880\" as=\"geometry\"/></mxCell><mxCell id=\"nOT_Oyojrh0cy4lGdhRo-41\" edge=\"1\" parent=\"1\" source=\"nOT_Oyojrh0cy4lGdhRo-38\" style=\"edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=-0.004;entryY=0.499;entryDx=0;entryDy=0;entryPerimeter=0;\" target=\"nOT_Oyojrh0cy4lGdhRo-40\"><mxGeometry relative=\"1\" as=\"geometry\"/></mxCell></root></mxGraphModel></diagram></mxfile>",
+  "pages": [
+    {
+      "id": "aeYk_Ap9ZlUeAiFhcBOF",
+      "name": "Página-1",
+      "cells": [
+        {
+          "id": "1",
+          "type": "layer"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-3",
+          "type": "edge",
+          "parent": "1",
+          "source": "nOT_Oyojrh0cy4lGdhRo-1",
+          "target": "nOT_Oyojrh0cy4lGdhRo-2"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-1",
+          "type": "node",
+          "parent": "1",
+          "label": "Web3Form \nwww.vrutal-labs.com",
+          "html": "Web3Form&nbsp;<br>www.vrutal-labs.com"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-6",
+          "type": "edge",
+          "parent": "1",
+          "source": "nOT_Oyojrh0cy4lGdhRo-2",
+          "target": "nOT_Oyojrh0cy4lGdhRo-5",
+          "label": "si"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-8",
+          "type": "edge",
+          "parent": "1",
+          "source": "nOT_Oyojrh0cy4lGdhRo-2",
+          "label": "no"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-2",
+          "type": "node",
+          "parent": "1",
+          "label": "dominio genéricog"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-37",
+          "type": "edge",
+          "parent": "1",
+          "source": "nOT_Oyojrh0cy4lGdhRo-5",
+          "target": "nOT_Oyojrh0cy4lGdhRo-9"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-5",
+          "type": "node",
+          "parent": "1",
+          "label": "Envia Formulario\nsolicita info",
+          "html": "Envia Formulario<br>solicita info"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-11",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-15",
+          "type": "edge",
+          "parent": "1",
+          "source": "nOT_Oyojrh0cy4lGdhRo-9",
+          "target": "nOT_Oyojrh0cy4lGdhRo-14"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-21",
+          "type": "edge",
+          "parent": "1",
+          "source": "nOT_Oyojrh0cy4lGdhRo-9",
+          "target": "nOT_Oyojrh0cy4lGdhRo-18"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-9",
+          "type": "node",
+          "parent": "1",
+          "label": "Investigación\nAI",
+          "html": "Investigación<br>AI"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-27",
+          "type": "edge",
+          "parent": "1",
+          "source": "nOT_Oyojrh0cy4lGdhRo-10"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-10",
+          "type": "node",
+          "parent": "1",
+          "label": "linkedIn"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-29",
+          "type": "edge",
+          "parent": "1",
+          "source": "nOT_Oyojrh0cy4lGdhRo-14"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-14",
+          "type": "node",
+          "parent": "1",
+          "label": "D&amp;B"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-30",
+          "type": "edge",
+          "parent": "1",
+          "source": "nOT_Oyojrh0cy4lGdhRo-16"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-16",
+          "type": "node",
+          "parent": "1",
+          "label": "Google"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-18",
+          "type": "node",
+          "parent": "1",
+          "label": "Web Empresa"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-22",
+          "type": "edge",
+          "parent": "1",
+          "source": "nOT_Oyojrh0cy4lGdhRo-9",
+          "target": "nOT_Oyojrh0cy4lGdhRo-16"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-31",
+          "type": "edge",
+          "parent": "1",
+          "source": "nOT_Oyojrh0cy4lGdhRo-18"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-35",
+          "type": "edge",
+          "parent": "1",
+          "source": "nOT_Oyojrh0cy4lGdhRo-32",
+          "target": "nOT_Oyojrh0cy4lGdhRo-34"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-36",
+          "type": "edge",
+          "parent": "1",
+          "source": "nOT_Oyojrh0cy4lGdhRo-32",
+          "target": "nOT_Oyojrh0cy4lGdhRo-33"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-32",
+          "type": "node",
+          "parent": "1",
+          "label": "compilación \nde datos",
+          "html": "compilación&nbsp;<div>de datos</div>"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-33",
+          "type": "node",
+          "parent": "1",
+          "label": "Hubspot"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-39",
+          "type": "edge",
+          "parent": "1",
+          "source": "nOT_Oyojrh0cy4lGdhRo-34",
+          "target": "nOT_Oyojrh0cy4lGdhRo-38"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-34",
+          "type": "node",
+          "parent": "1",
+          "label": "Informe x emaill a vrutal"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-38",
+          "type": "node",
+          "parent": "1",
+          "label": "Enlace Calendly"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-40",
+          "type": "node",
+          "parent": "1",
+          "label": "Reunion cliente\nZoom",
+          "html": "Reunion cliente<br>Zoom<div><br/></div>"
+        },
+        {
+          "id": "nOT_Oyojrh0cy4lGdhRo-41",
+          "type": "edge",
+          "parent": "1",
+          "source": "nOT_Oyojrh0cy4lGdhRo-38",
+          "target": "nOT_Oyojrh0cy4lGdhRo-40"
+        }
+      ]
+    }
+  ]
+}

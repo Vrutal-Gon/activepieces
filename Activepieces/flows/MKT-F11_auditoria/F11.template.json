@@ -1,0 +1,234 @@
+{
+  "name": "MKT-F11 · Auditoría técnica del sitio",
+  "type": "SHARED",
+  "summary": "search_marketing · TSK-000119 · Recibe → Consulta → Consulta → Ordena → Decide → Ejecuta → Deja rastro",
+  "description": "Vrutal Labs · Marketing. Esqueleto generado desde el diagrama (ver MARKETING_flujos). Los pasos «pendiente» fallan a propósito.",
+  "tags": [
+    "vrutal",
+    "marketing",
+    "search_marketing",
+    "TSK-000119"
+  ],
+  "blogUrl": "",
+  "metadata": {},
+  "author": "Vrutal Labs",
+  "categories": [],
+  "pieces": [
+    "@activepieces/piece-google-sheets",
+    "@activepieces/piece-schedule"
+  ],
+  "flows": [
+    {
+      "displayName": "MKT-F11 · Auditoría técnica del sitio",
+      "trigger": {
+        "name": "trigger",
+        "valid": true,
+        "displayName": "Recibe · cada martes, 07:00",
+        "type": "PIECE_TRIGGER",
+        "settings": {
+          "pieceName": "@activepieces/piece-schedule",
+          "pieceVersion": "0.1.22",
+          "triggerName": "every_week",
+          "propertySettings": {},
+          "input": {
+            "day_of_the_week": 2,
+            "hour_of_the_day": 7,
+            "timezone": "Europe/Madrid"
+          }
+        },
+        "lastUpdatedDate": "2026-10-03T00:00:00.000Z",
+        "nextAction": {
+          "name": "step_1",
+          "valid": false,
+          "skip": false,
+          "displayName": "Consulta · indexación y enlaces rotos",
+          "type": "CODE",
+          "settings": {
+            "input": {},
+            "sourceCode": {
+              "code": "/* vrutal-block { \"block\": \"Consulta · indexación y enlaces rotos\", \"kind\": \"context\", \"pending\": true } */\n// PASO PENDIENTE DE CONFIGURAR. Falla a proposito (fail-closed): hasta que lo sustituyas, el flujo no actua.\n// Que hay que poner aqui: Indexación y enlaces rotos del sitio. BLOQUEADO: Search Console no disponible (sin web verificada).\nexport const code = async (_inputs: Record<string, never>) => {\n  throw new Error('PENDIENTE DE CONFIGURAR · Consulta · indexación y enlaces rotos: Indexación y enlaces rotos del sitio');\n};\n",
+              "packageJson": "{}"
+            },
+            "errorHandlingOptions": {
+              "retryOnFailure": {
+                "value": false
+              },
+              "continueOnFailure": {
+                "value": false
+              }
+            }
+          },
+          "nextAction": {
+            "name": "step_2",
+            "valid": false,
+            "skip": false,
+            "displayName": "Consulta · velocidad y experiencia de página",
+            "type": "CODE",
+            "settings": {
+              "input": {},
+              "sourceCode": {
+                "code": "/* vrutal-block { \"block\": \"Consulta · velocidad y experiencia de página\", \"kind\": \"context\", \"pending\": true } */\n// PASO PENDIENTE DE CONFIGURAR. Falla a proposito (fail-closed): hasta que lo sustituyas, el flujo no actua.\n// Que hay que poner aqui: Velocidad y experiencia de página (p. ej. PageSpeed Insights API, sin cuenta de cliente). Devolver una lista de hallazgos por URL.\nexport const code = async (_inputs: Record<string, never>) => {\n  throw new Error('PENDIENTE DE CONFIGURAR · Consulta · velocidad y experiencia de página: Velocidad y experiencia de página (p');\n};\n",
+                "packageJson": "{}"
+              },
+              "errorHandlingOptions": {
+                "retryOnFailure": {
+                  "value": false
+                },
+                "continueOnFailure": {
+                  "value": false
+                }
+              }
+            },
+            "nextAction": {
+              "name": "step_3",
+              "valid": true,
+              "skip": false,
+              "displayName": "Ordena · SiteFinding",
+              "type": "CODE",
+              "settings": {
+                "input": {
+                  "sources": [
+                    "{{step_1}}",
+                    "{{step_2}}"
+                  ]
+                },
+                "sourceCode": {
+                  "code": "/* vrutal-block {\n  \"block\": \"Ordena · a SiteFinding\",\n  \"kind\": \"normalize\",\n  \"variant\": {},\n  \"consumes\": [\"salida del paso anterior\"],\n  \"produces\": \"SiteFinding\",\n  \"inputs\": {\"sources\": [\"{{step_1}}\", \"{{step_2}}\"]}\n} */\n// Paso Code de Activepieces. Convierte la salida anterior en filas SiteFinding validadas.\n// Fail-closed: si no queda ninguna fila valida, el paso falla y nada se escribe.\n// Contrato: nuevo, propuesto. Los campos son una PROPUESTA hasta que el founder los apruebe.\n\nconst FIELDS: { name: string; req: boolean; enum: string[] | null; default: string | null; sourced: boolean }[] = [{\"name\": \"url\", \"req\": true, \"enum\": null, \"default\": null, \"sourced\": false}, {\"name\": \"issue_type\", \"req\": true, \"enum\": null, \"default\": null, \"sourced\": false}, {\"name\": \"detail\", \"req\": true, \"enum\": null, \"default\": null, \"sourced\": false}, {\"name\": \"severity\", \"req\": false, \"enum\": [\"high\", \"medium\", \"low\"], \"default\": null, \"sourced\": false}, {\"name\": \"source\", \"req\": false, \"enum\": null, \"default\": null, \"sourced\": false}];\nconst LOOKUP_KEY = null;\nconst MAX_ROWS = 200; // techo por ejecucion\n\nconst clean = (v: unknown, max = 2000) =>\n  (Array.isArray(v) ? v.join(' | ') : String(v ?? ''))\n    .replace(/[\\u0000-\\u001f]/g, ' ')\n    .replace(/^[=+\\-@]/, \"'$&\") // anti formula: una celda nunca empieza por = + - @\n    .trim()\n    .slice(0, max);\n\nconst toList = (src: unknown): Record<string, unknown>[] => {\n  let data: unknown = src;\n  if (typeof data === 'string') {\n    const a = data.search(/[\\[{]/);\n    const last = Math.max(data.lastIndexOf('}'), data.lastIndexOf(']'));\n    if (a < 0 || last <= a) return [];\n    try { data = JSON.parse(data.slice(a, last + 1)); } catch { throw new Error('El JSON recibido no es valido'); }\n  }\n  const arr = Array.isArray(data)\n    ? data\n    : data && typeof data === 'object' && Array.isArray((data as { items?: unknown }).items)\n      ? (data as { items: unknown[] }).items\n      : data && typeof data === 'object' ? [data] : [];\n  return arr\n    .map((x) => (x && typeof x === 'object' && 'values' in x ? (x as { values: unknown }).values : x))\n    .filter((x): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x));\n};\n\nexport const code = async (inputs: { sources: unknown[]; lookup?: unknown }) => {\n  const ranAt = new Date().toISOString();\n  const day = ranAt.slice(0, 10);\n  const records = (inputs.sources ?? []).flatMap((s) => toList(s));\n  const lookupRows = LOOKUP_KEY ? toList(inputs.lookup) : [];\n  const byKey = new Map(lookupRows.map((r) => [String(r[LOOKUP_KEY as string] ?? ''), r]));\n\n  const rows: Record<string, string>[] = [];\n  let discarded = 0;\n  for (const rec of records) {\n    const extra = LOOKUP_KEY ? byKey.get(String(rec[LOOKUP_KEY] ?? '')) ?? {} : {};\n    const row: Record<string, string> = { fecha: day };\n    let ok = true;\n    for (const fd of FIELDS) {\n      let v = clean(rec[fd.name] ?? extra[fd.name] ?? fd.default ?? '');\n      if (fd.sourced && v && !/https?:\\/\\/|fuente:/i.test(v)) v = ''; // la prueba cita fuente o queda vacia\n      if (v && fd.enum && !fd.enum.includes(v.toLowerCase())) { ok = false; break; }\n      if (fd.enum && v) v = v.toLowerCase();\n      if (fd.req && !v) { ok = false; break; }\n      row[fd.name] = v;\n    }\n    if (!ok) { discarded++; continue; }\n    rows.push(row);\n    if (rows.length >= MAX_ROWS) break;\n  }\n  if (rows.length === 0) throw new Error('Ninguna fila valida para SiteFinding (' + discarded + ' descartadas)');\n  return { rows, count: rows.length, discarded, ran_at: ranAt, rows_json: JSON.stringify(rows) };\n};\n",
+                  "packageJson": "{}"
+                },
+                "errorHandlingOptions": {
+                  "retryOnFailure": {
+                    "value": false
+                  },
+                  "continueOnFailure": {
+                    "value": false
+                  }
+                }
+              },
+              "nextAction": {
+                "name": "step_4",
+                "valid": false,
+                "skip": false,
+                "displayName": "Decide · prioridad de cada hallazgo",
+                "type": "CODE",
+                "settings": {
+                  "input": {},
+                  "sourceCode": {
+                    "code": "/* vrutal-block { \"block\": \"Decide · prioridad de cada hallazgo\", \"kind\": \"decide\", \"pending\": true } */\n// PASO PENDIENTE DE CONFIGURAR. Falla a proposito (fail-closed): hasta que lo sustituyas, el flujo no actua.\n// Que hay que poner aqui: Asignar `severity` (high|medium|low) a cada fila de `{{step_3.rows}}` con reglas deterministas (patrón SCRIPT, sin LLM). Umbrales sin definir.\nexport const code = async (_inputs: Record<string, never>) => {\n  throw new Error('PENDIENTE DE CONFIGURAR · Decide · prioridad de cada hallazgo: Asignar `severity` (high|medium|low) a cada fila de `{{step_3');\n};\n",
+                    "packageJson": "{}"
+                  },
+                  "errorHandlingOptions": {
+                    "retryOnFailure": {
+                      "value": false
+                    },
+                    "continueOnFailure": {
+                      "value": false
+                    }
+                  }
+                },
+                "nextAction": {
+                  "name": "step_5",
+                  "valid": false,
+                  "skip": false,
+                  "displayName": "Ejecuta · abrir incidencias priorizadas",
+                  "type": "CODE",
+                  "settings": {
+                    "input": {},
+                    "sourceCode": {
+                      "code": "/* vrutal-block { \"block\": \"Ejecuta · abrir incidencias priorizadas\", \"kind\": \"act\", \"pending\": true } */\n// PASO PENDIENTE DE CONFIGURAR. Falla a proposito (fail-closed): hasta que lo sustituyas, el flujo no actua.\n// Que hay que poner aqui: Abrir incidencias priorizadas en la herramienta de tareas (sin decidir) y/o escribir en la pestaña `Hallazgos`.\nexport const code = async (_inputs: Record<string, never>) => {\n  throw new Error('PENDIENTE DE CONFIGURAR · Ejecuta · abrir incidencias priorizadas: Abrir incidencias priorizadas en la herramienta de tareas (sin decidir) y/o escribir en la pestaña `Hallazgos`');\n};\n",
+                      "packageJson": "{}"
+                    },
+                    "errorHandlingOptions": {
+                      "retryOnFailure": {
+                        "value": false
+                      },
+                      "continueOnFailure": {
+                        "value": false
+                      }
+                    }
+                  },
+                  "nextAction": {
+                    "name": "step_6",
+                    "valid": false,
+                    "skip": false,
+                    "displayName": "Deja rastro",
+                    "type": "PIECE",
+                    "settings": {
+                      "pieceName": "@activepieces/piece-google-sheets",
+                      "pieceVersion": "0.16.4",
+                      "actionName": "insert_row",
+                      "propertySettings": {
+                        "values": {
+                          "type": "MANUAL",
+                          "schema": {
+                            "A": {
+                              "type": "SHORT_TEXT",
+                              "required": false,
+                              "displayName": "fecha",
+                              "defaultValue": ""
+                            },
+                            "B": {
+                              "type": "SHORT_TEXT",
+                              "required": false,
+                              "displayName": "flujo",
+                              "defaultValue": ""
+                            },
+                            "C": {
+                              "type": "SHORT_TEXT",
+                              "required": false,
+                              "displayName": "tarea",
+                              "defaultValue": ""
+                            },
+                            "D": {
+                              "type": "SHORT_TEXT",
+                              "required": false,
+                              "displayName": "resultado",
+                              "defaultValue": ""
+                            },
+                            "E": {
+                              "type": "SHORT_TEXT",
+                              "required": false,
+                              "displayName": "detalle",
+                              "defaultValue": ""
+                            }
+                          }
+                        }
+                      },
+                      "input": {
+                        "auth": "{{connections['HirdYf0okm7HontbOX9RE']}}",
+                        "includeTeamDrives": false,
+                        "spreadsheetId": "1QILqdaxNUUYoHUyLsoDgHe45QP_LgGKPnwFhdKmM4BQ",
+                        "sheetId": 1870392726,
+                        "first_row_headers": true,
+                        "as_string": false,
+                        "values": {
+                          "A": "{{step_3.ran_at}}",
+                          "B": "MKT-F11 Auditoría técnica del sitio",
+                          "C": "TSK-000119",
+                          "D": "ok",
+                          "E": "{{step_3.count}} registros, {{step_3.discarded}} descartados"
+                        }
+                      },
+                      "errorHandlingOptions": {
+                        "retryOnFailure": {
+                          "value": false
+                        },
+                        "continueOnFailure": {
+                          "value": false
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "valid": false,
+      "schemaVersion": "20",
+      "notes": []
+    }
+  ],
+  "status": "PUBLISHED"
+}

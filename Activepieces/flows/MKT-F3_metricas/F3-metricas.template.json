@@ -1,0 +1,259 @@
+{
+  "name": "MKT-F3 · Foto semanal de métricas",
+  "type": "SHARED",
+  "summary": "marketing_analyst · TSK-001293 · Recibe → Calcula semana → Consulta HubSpot → Ordena MetricsSnapshot → Ejecuta hoja → Deja rastro",
+  "description": "Vrutal Labs · Marketing. Ver Activepieces/flows/MARKETING_flujos_v0.1.md (F3).",
+  "tags": [
+    "vrutal",
+    "marketing",
+    "marketing_analyst",
+    "TSK-001293"
+  ],
+  "blogUrl": "",
+  "metadata": {},
+  "author": "Vrutal Labs",
+  "categories": [],
+  "pieces": [
+    "@activepieces/piece-schedule",
+    "@activepieces/piece-google-sheets",
+    "@activepieces/piece-http"
+  ],
+  "flows": [
+    {
+      "displayName": "MKT-F3 · Foto semanal de métricas",
+      "trigger": {
+        "name": "trigger",
+        "valid": true,
+        "displayName": "Recibe · cada lunes, 08:00",
+        "type": "PIECE_TRIGGER",
+        "settings": {
+          "pieceName": "@activepieces/piece-schedule",
+          "pieceVersion": "0.1.22",
+          "triggerName": "every_week",
+          "propertySettings": {},
+          "input": {
+            "day_of_the_week": 1,
+            "hour_of_the_day": 8,
+            "timezone": "Europe/Madrid"
+          }
+        },
+        "nextAction": {
+          "name": "step_1",
+          "type": "CODE",
+          "valid": true,
+          "skip": false,
+          "displayName": "Calcula · ventana de la semana anterior",
+          "settings": {
+            "input": {
+              "runDate": "{{trigger.timestamp}}"
+            },
+            "sourceCode": {
+              "code": "/* vrutal-block {\n  \"block\": \"Calcula · ventana semanal\",\n  \"kind\": \"normalize\",\n  \"variant\": {},\n  \"consumes\": [],\n  \"produces\": \"ReportWindow@1\",\n  \"inputs\": { \"runDate\": \"{{trigger.timestamp}}\" }\n} */\n// Paso Code de Activepieces. Calcula la semana anterior completa (lunes 00:00 a lunes 00:00, hora de Madrid).\n// HubSpot no entiende fechas relativas: hay que darle los instantes exactos, y por eso este paso va antes.\n// Fail-closed: si la fecha de entrada no es válida, falla y no se consulta nada.\n\nconst TZ = 'Europe/Madrid';\nconst DAY = 86_400_000;\n\n// Día de calendario de un instante, visto en Madrid, como medianoche UTC de ese día.\nconst calendarDay = (ms: number): number => {\n  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' })\n    .formatToParts(ms)\n    .filter((p) => p.type !== 'literal')\n    .reduce<Record<string, string>>((acc, p) => ({ ...acc, [p.type]: p.value }), {});\n  return Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day));\n};\n\n// Desfase de Madrid respecto a UTC, en minutos, en un instante dado.\nconst offsetMinutes = (ms: number): number => {\n  const label = new Intl.DateTimeFormat('en-US', { timeZone: TZ, timeZoneName: 'longOffset' })\n    .formatToParts(ms)\n    .find((p) => p.type === 'timeZoneName')?.value ?? '';\n  const m = /GMT([+-])(\\d{1,2})(?::?(\\d{2}))?/.exec(label);\n  if (!m) throw new Error('No se pudo calcular el desfase horario de Madrid');\n  return (m[1] === '-' ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3] ?? 0));\n};\n\n// Instante en que empieza ese día de calendario en Madrid. Se mide a mediodía: los cambios de hora son de madrugada del domingo.\nconst midnightMadrid = (day: number): number => day - offsetMinutes(day + 12 * 3_600_000) * 60_000;\n\nconst isoDay = (day: number) => new Date(day).toISOString().slice(0, 10);\n\nexport const code = async (inputs: { runDate?: string }) => {\n  const run = inputs.runDate ? new Date(inputs.runDate) : new Date();\n  if (Number.isNaN(run.getTime())) throw new Error('La fecha de ejecución no es válida');\n\n  const today = calendarDay(run.getTime());\n  const sinceMonday = (new Date(today).getUTCDay() + 6) % 7; // lunes = 0\n  const thisMonday = today - sinceMonday * DAY;\n  const start = thisMonday - 7 * DAY;\n\n  return {\n    period_start: isoDay(start), // lunes de la semana anterior\n    period_end: isoDay(thisMonday - DAY), // domingo, inclusivo\n    start_ms: midnightMadrid(start), // inicio (incluido) para la consulta\n    end_ms: midnightMadrid(thisMonday), // fin (excluido) para la consulta\n  };\n};\n",
+              "packageJson": "{}"
+            },
+            "errorHandlingOptions": {
+              "retryOnFailure": {
+                "value": false
+              },
+              "continueOnFailure": {
+                "value": false
+              }
+            }
+          },
+          "nextAction": {
+            "name": "step_2",
+            "valid": false,
+            "skip": false,
+            "displayName": "Consulta · clave de HubSpot (Vault)",
+            "type": "PIECE",
+            "settings": {
+              "pieceName": "@activepieces/piece-http",
+              "pieceVersion": "0.11.19",
+              "actionName": "send_request",
+              "propertySettings": {},
+              "input": {
+                "method": "POST",
+                "url": "https://rgauumxztblwurzebmsa.supabase.co/functions/v1/integration-get-key",
+                "headers": {
+                  "Content-Type": "application/json",
+                  "X-AP-Token": "PENDIENTE_GENERAR_SECRETO_AP_INTEGRATION_TOKEN"
+                },
+                "queryParams": {},
+                "authType": "NONE",
+                "body_type": "json",
+                "body": {
+                  "provider": "hubspot"
+                },
+                "response_is_binary": false,
+                "followRedirects": true
+              },
+              "errorHandlingOptions": {
+                "retryOnFailure": {
+                  "value": false
+                },
+                "continueOnFailure": {
+                  "value": false
+                }
+              }
+            },
+            "nextAction": {
+              "name": "step_3",
+              "type": "PIECE",
+              "valid": false,
+              "skip": false,
+              "displayName": "Consulta · contactos nuevos de la semana (HubSpot)",
+              "settings": {
+                "pieceName": "@activepieces/piece-http",
+                "pieceVersion": "0.11.19",
+                "actionName": "send_request",
+                "propertySettings": {},
+                "input": {
+                  "method": "POST",
+                  "url": "https://api.hubapi.com/crm/v3/objects/contacts/search",
+                  "headers": {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer {{step_2.body.key}}"
+                  },
+                  "queryParams": {},
+                  "authType": "NONE",
+                  "body_type": "json",
+                  "body": {
+                    "filterGroups": [
+                      {
+                        "filters": [
+                          {
+                            "propertyName": "createdate",
+                            "operator": "GTE",
+                            "value": "{{step_1.start_ms}}"
+                          },
+                          {
+                            "propertyName": "createdate",
+                            "operator": "LT",
+                            "value": "{{step_1.end_ms}}"
+                          }
+                        ]
+                      }
+                    ],
+                    "properties": [
+                      "hs_analytics_source",
+                      "hs_analytics_source_data_1"
+                    ],
+                    "limit": 100
+                  },
+                  "response_is_binary": false,
+                  "followRedirects": true
+                },
+                "errorHandlingOptions": {
+                  "retryOnFailure": {
+                    "value": true
+                  },
+                  "continueOnFailure": {
+                    "value": false
+                  }
+                }
+              },
+              "nextAction": {
+                "name": "step_4",
+                "type": "CODE",
+                "valid": true,
+                "skip": false,
+                "displayName": "Ordena · a MetricsSnapshot (HubSpot)",
+                "settings": {
+                  "input": {
+                    "hubspot": "{{step_3.body}}",
+                    "period_start": "{{step_1.period_start}}",
+                    "period_end": "{{step_1.period_end}}"
+                  },
+                  "sourceCode": {
+                    "code": "/* vrutal-block {\n  \"block\": \"Ordena · a MetricsSnapshot (HubSpot)\",\n  \"kind\": \"normalize\",\n  \"variant\": { \"source\": \"hubspot\" },\n  \"consumes\": [\"ReportWindow@1\"],\n  \"produces\": \"MetricsSnapshot@1\",\n  \"inputs\": { \"hubspot\": \"{{step_3.body}}\", \"period_start\": \"{{step_1.period_start}}\", \"period_end\": \"{{step_1.period_end}}\" }\n} */\n// Paso Code de Activepieces. Convierte los contactos nuevos de HubSpot en filas MetricsSnapshot, una por canal.\n// Fail-closed: si la respuesta no tiene el formato esperado, o hay más contactos de los que caben en una consulta,\n// el paso falla y nada se escribe: una cifra truncada sería peor que ninguna.\n\ntype Channel = 'seo' | 'sem' | 'email' | 'linkedin' | 'social' | 'web' | 'other';\nconst CHANNELS: Channel[] = ['seo', 'sem', 'email', 'linkedin', 'social', 'web', 'other'];\nconst DAY_RE = /^\\d{4}-\\d{2}-\\d{2}$/;\n\n// Fuente original de HubSpot (hs_analytics_source) -> canal del contrato. Lo desconocido va a «other», nunca se inventa.\nconst channelOf = (source: unknown, drill: unknown): Channel => {\n  switch (String(source ?? '').toUpperCase()) {\n    case 'ORGANIC_SEARCH':\n      return 'seo';\n    case 'PAID_SEARCH':\n      return 'sem';\n    case 'EMAIL_MARKETING':\n      return 'email';\n    case 'SOCIAL_MEDIA':\n    case 'PAID_SOCIAL':\n      return /linkedin/i.test(String(drill ?? '')) ? 'linkedin' : 'social';\n    case 'DIRECT_TRAFFIC':\n      return 'web';\n    default:\n      return 'other';\n  }\n};\n\nexport const code = async (inputs: { hubspot: unknown; period_start: string; period_end: string }) => {\n  if (!DAY_RE.test(inputs.period_start) || !DAY_RE.test(inputs.period_end)) throw new Error('El periodo no es válido');\n\n  const body = (typeof inputs.hubspot === 'string' ? JSON.parse(inputs.hubspot) : inputs.hubspot) as {\n    total?: unknown;\n    results?: { properties?: Record<string, unknown> }[];\n  } | null;\n  if (!body || typeof body.total !== 'number' || !Array.isArray(body.results)) {\n    throw new Error('La respuesta de HubSpot no tiene el formato esperado');\n  }\n  if (body.total > body.results.length) {\n    throw new Error(`HubSpot devolvió ${body.results.length} de ${body.total} contactos: hay más de una página`);\n  }\n\n  const counts = new Map<Channel, number>(CHANNELS.map((c) => [c, 0]));\n  for (const contact of body.results) {\n    const p = contact?.properties ?? {};\n    const ch = channelOf(p.hs_analytics_source, p.hs_analytics_source_data_1);\n    counts.set(ch, (counts.get(ch) ?? 0) + 1);\n  }\n\n  // Una fila por canal, también con 0: así la serie semanal no tiene huecos.\n  const rows = CHANNELS.map((channel) => ({\n    period_start: inputs.period_start,\n    period_end: inputs.period_end,\n    channel,\n    metric: 'new_contacts',\n    value: counts.get(channel) ?? 0,\n    source: 'hubspot',\n  }));\n\n  return { rows, count: rows.length, total: body.results.length };\n};\n",
+                    "packageJson": "{}"
+                  },
+                  "errorHandlingOptions": {
+                    "retryOnFailure": {
+                      "value": false
+                    },
+                    "continueOnFailure": {
+                      "value": false
+                    }
+                  }
+                },
+                "nextAction": {
+                  "name": "step_5",
+                  "type": "PIECE",
+                  "valid": false,
+                  "skip": false,
+                  "displayName": "Ejecuta · escribir MetricsSnapshot (hoja Métricas)",
+                  "settings": {
+                    "pieceName": "@activepieces/piece-google-sheets",
+                    "pieceVersion": "0.16.4",
+                    "actionName": "google-sheets-insert-multiple-rows",
+                    "propertySettings": {},
+                    "input": {
+                      "includeTeamDrives": false,
+                      "spreadsheetId": null,
+                      "sheetId": null,
+                      "input_type": "json",
+                      "values": {
+                        "values": "{{step_4.rows}}"
+                      },
+                      "overwrite": false,
+                      "check_for_duplicate": false,
+                      "headerRow": 1
+                    },
+                    "errorHandlingOptions": {
+                      "retryOnFailure": {
+                        "value": false
+                      },
+                      "continueOnFailure": {
+                        "value": false
+                      }
+                    }
+                  },
+                  "nextAction": {
+                    "name": "step_6",
+                    "type": "PIECE",
+                    "valid": false,
+                    "skip": false,
+                    "displayName": "Deja rastro · hoja Rastro",
+                    "settings": {
+                      "pieceName": "@activepieces/piece-google-sheets",
+                      "pieceVersion": "0.16.4",
+                      "actionName": "insert_row",
+                      "propertySettings": {},
+                      "input": {
+                        "includeTeamDrives": false,
+                        "spreadsheetId": null,
+                        "sheetId": null,
+                        "first_row_headers": true,
+                        "values": {
+                          "A": "{{trigger.timestamp}}",
+                          "B": "MKT-F3 métricas",
+                          "C": "TSK-001293",
+                          "D": "ok",
+                          "E": "{{step_4.total}} contactos nuevos del {{step_1.period_start}} al {{step_1.period_end}}"
+                        }
+                      },
+                      "errorHandlingOptions": {
+                        "retryOnFailure": {
+                          "value": false
+                        },
+                        "continueOnFailure": {
+                          "value": false
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "lastUpdatedDate": "2026-10-02T14:49:12.132Z"
+      },
+      "valid": false,
+      "schemaVersion": "20",
+      "notes": []
+    }
+  ],
+  "status": "PUBLISHED"
+}
