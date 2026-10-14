@@ -19,6 +19,17 @@ desktop.ini
 *.log
 
 # ===========================
+# Secretos
+# ===========================
+
+.env
+**/.env
+.env.*
+**/.env.*
+# Las plantillas de ejemplo sí van a git (sin secretos)
+!**/.env*.example
+
+# ===========================
 # Backups
 # ===========================
 
@@ -33,3 +44,15 @@ desktop.ini
 
 node_modules/
 vendor/
+# ===========================
+# Fuera de git (ver README)
+# ===========================
+
+# Libros y PDFs de referencia: pesados y con licencia de terceros
+_referencias/
+# Datos personales exportados
+datos/linkedin/
+# Pendiente de revisión y borrado
+_eliminar/
+# Secretos de instancias de cliente
+infra/instance/clients/
