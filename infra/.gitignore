@@ -1,0 +1,4 @@
+# Secretos de instancias y del edge: nunca en git
+instance/clients/
+.env
+**/.env

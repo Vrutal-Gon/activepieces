@@ -1,0 +1,396 @@
+# ─────────────────────────────────────────────────────────────
+# Instancia de cliente VrutalOS (LAB08 Anexo B). Un cliente = una instancia = este compose.
+# Varias instancias conviven en un VPS detrás del edge (infra/edge).
+#
+#   docker compose -p <slug> --env-file clients/<slug>.env up -d
+#   docker compose -p <slug> --env-file clients/<slug>.env --profile app up -d   (con la app)
+#
+# Qué se ve desde internet (vía edge, HTTPS; en local, http://<slug>.localhost:8088):
+#   https://<slug>.vrutal-labs.com              → app VrutalOS (perfil "app")
+#   https://<slug>-flows.vrutal-labs.com/api/v1/webhooks/...  → SOLO webhooks de Activepieces
+# Qué NO se ve nunca desde internet: la interfaz de Activepieces, Postgres, Redis, Qdrant.
+# La interfaz de Activepieces es solo para el staff, por túnel SSH a 127.0.0.1:${AP_ADMIN_PORT}.
+# ─────────────────────────────────────────────────────────────
+name: ${CLIENT_SLUG:?falta CLIENT_SLUG}
+
+services:
+  # ── Ejecución: Activepieces ─────────────────────────────────
+  activepieces:
+    image: activepieces/activepieces:0.82.0 # fijada: nunca latest (LAB08 cap. 5)
+    restart: unless-stopped
+    mem_limit: 1536m
+    environment:
+      AP_FRONTEND_URL: ${PUBLIC_SCHEME:-https}://${CLIENT_SLUG}-flows.${BASE_DOMAIN}${PUBLIC_PORT_SUFFIX:-}
+      # El motor sube el progreso de cada ejecución a la API del propio servidor. Sin esto lo intenta por
+      # AP_FRONTEND_URL (pública, vía Traefik), donde solo se expone /api/v1/webhooks: toda ejecución acaba
+      # en INTERNAL_ERROR. Esta vía es interna (red de Docker) y no abre ninguna ruta en Traefik.
+      AP_INTERNAL_URL: http://activepieces:80
+      AP_ENCRYPTION_KEY: ${AP_ENCRYPTION_KEY:?}
+      AP_JWT_SECRET: ${AP_JWT_SECRET:?}
+      AP_EXECUTION_MODE: SANDBOX_CODE_ONLY
+      AP_SIGN_UP_ENABLED: "false"
+      AP_TELEMETRY_ENABLED: "false"
+      AP_DB_TYPE: POSTGRES
+      AP_POSTGRES_HOST: ap_postgres
+      AP_POSTGRES_PORT: "5432"
+      AP_POSTGRES_DATABASE: activepieces
+      AP_POSTGRES_USERNAME: activepieces
+      AP_POSTGRES_PASSWORD: ${AP_POSTGRES_PASSWORD:?}
+      AP_REDIS_TYPE: STANDALONE
+      AP_REDIS_HOST: ap_redis
+      AP_REDIS_PORT: "6379"
+    ports:
+      # Solo localhost del VPS: el staff entra por túnel SSH. Puerto distinto por cliente.
+      - "127.0.0.1:${AP_ADMIN_PORT:?}:80"
+    depends_on:
+      ap_postgres:
+        condition: service_healthy
+      ap_redis:
+        condition: service_healthy
+    volumes:
+      - ap_cache:/usr/src/app/cache
+    networks:
+      - data
+      - edge
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      # Desde internet, solo la ruta de webhooks. La interfaz queda fuera.
+      - traefik.http.routers.${CLIENT_SLUG}-flows.rule=Host(`${CLIENT_SLUG}-flows.${BASE_DOMAIN}`) && PathPrefix(`/api/v1/webhooks`)
+      - traefik.http.routers.${CLIENT_SLUG}-flows.entrypoints=${EDGE_ENTRYPOINT:-websecure}
+      - traefik.http.services.${CLIENT_SLUG}-flows.loadbalancer.server.port=80
+
+  ap_postgres:
+    image: postgres:16
+    restart: unless-stopped
+    mem_limit: 512m
+    environment:
+      POSTGRES_DB: activepieces
+      POSTGRES_USER: activepieces
+      POSTGRES_PASSWORD: ${AP_POSTGRES_PASSWORD:?}
+    volumes:
+      - ap_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U activepieces -d activepieces"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - data
+
+  ap_redis:
+    image: redis:7
+    restart: unless-stopped
+    mem_limit: 256m
+    volumes:
+      - ap_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - data
+
+  # ── Memoria del Cuore (LAB08 Anexo A): Postgres 17 + Qdrant ──
+  memory_postgres:
+    image: postgres:17.11
+    restart: unless-stopped
+    mem_limit: 256m
+    environment:
+      POSTGRES_DB: cuore
+      POSTGRES_USER: cuore
+      POSTGRES_PASSWORD: ${MEMORY_POSTGRES_PASSWORD:?}
+    volumes:
+      - memory_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cuore -d cuore"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - data
+
+  qdrant:
+    image: qdrant/qdrant:v1.16.2
+    restart: unless-stopped
+    mem_limit: 512m
+    environment:
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:?}
+      QDRANT__TELEMETRY_DISABLED: "true"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - data
+
+  # ── Redes sociales: Postiz (perfil "social", opcional por cliente) ──
+  # Un cliente = una instancia de Postiz, igual que Activepieces (Postiz no aísla clientes
+  # entre sí). Interfaz solo para el staff, por túnel SSH (igual que Activepieces); lo único
+  # que sale a internet es la vuelta del OAuth de cada red social, nunca la interfaz completa.
+  postiz:
+    profiles: ["social"]
+    # Fijada por digest (LAB08 cap. 5: nunca "latest"). Postiz no publica un tag de versión en
+    # sus labels; este es el digest real probado en el spike (2026-10-08) — revisar si se actualiza.
+    image: ghcr.io/gitroomhq/postiz-app@sha256:7eb4a553507ce3f200deff2ec0211ab3cf834ba19eb44dd68e83ccc236509feb
+    restart: unless-stopped
+    mem_limit: 2g
+    environment:
+      MAIN_URL: ${PUBLIC_SCHEME:-https}://${CLIENT_SLUG}-social.${BASE_DOMAIN}${PUBLIC_PORT_SUFFIX:-}
+      FRONTEND_URL: ${PUBLIC_SCHEME:-https}://${CLIENT_SLUG}-social.${BASE_DOMAIN}${PUBLIC_PORT_SUFFIX:-}
+      NEXT_PUBLIC_BACKEND_URL: ${PUBLIC_SCHEME:-https}://${CLIENT_SLUG}-social.${BASE_DOMAIN}${PUBLIC_PORT_SUFFIX:-}/api
+      BACKEND_INTERNAL_URL: http://localhost:3000
+      JWT_SECRET: ${POSTIZ_JWT_SECRET:?}
+      DATABASE_URL: postgresql://postiz:${POSTIZ_POSTGRES_PASSWORD:?}@postiz_postgres:5432/postiz
+      REDIS_URL: redis://postiz_redis:6379
+      TEMPORAL_ADDRESS: temporal:7233
+      IS_GENERAL: "true"
+      DISABLE_REGISTRATION: "true" # una sola alta permitida (el staff, por API, sin pasar por el formulario)
+      STORAGE_PROVIDER: local
+      UPLOAD_DIRECTORY: /uploads
+      NEXT_PUBLIC_UPLOAD_DIRECTORY: /uploads
+      MASTODON_URL: https://mastodon.social
+      # Las credenciales de la app de cada red social (LINKEDIN_CLIENT_ID/SECRET y compañía)
+      # NO se ponen aquí a propósito: son de la app de LinkedIn Developers del propio CLIENTE,
+      # que las pega en VrutalOS → Integraciones. boot.sh se las pide a su VrutalOS al arrancar
+      # y las exporta, así nunca se escriben en un .env de esta máquina ni nos las tiene que
+      # mandar el cliente. Para aplicar un cambio basta reiniciar este contenedor: de eso se
+      # encarga postiz_agent.
+      SOCIAL_APP_ENV_URL: ${VRUTALOS_FUNCTIONS_BASE_URL:?}/social-app-env
+      SOCIAL_APP_TOKEN: ${SOCIAL_APP_TOKEN:?}
+    # Igual que el Cmd original de la imagen (`sh -c "nginx && pnpm run pm2"`), pero pasando
+    # antes por boot.sh. El entrypoint de la imagen se conserva.
+    command: ["sh", "/vrutal/boot.sh"]
+    volumes:
+      - postiz_config:/config/
+      - postiz_uploads:/uploads/
+      - ./postiz/boot.sh:/vrutal/boot.sh:ro
+    ports:
+      # Igual que Activepieces: solo localhost del VPS, el staff entra por túnel SSH.
+      - "127.0.0.1:${POSTIZ_ADMIN_PORT:?}:5000"
+    depends_on:
+      postiz_postgres:
+        condition: service_healthy
+      postiz_redis:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+    networks:
+      - data
+      - edge
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      # Desde internet, SOLO la vuelta del OAuth de cada red social — nunca la interfaz.
+      - traefik.http.routers.${CLIENT_SLUG}-social.rule=Host(`${CLIENT_SLUG}-social.${BASE_DOMAIN}`) && PathPrefix(`/integrations/social`)
+      - traefik.http.routers.${CLIENT_SLUG}-social.entrypoints=${EDGE_ENTRYPOINT:-websecure}
+      - traefik.http.services.${CLIENT_SLUG}-social.loadbalancer.server.port=5000
+
+  postiz_postgres:
+    profiles: ["social"]
+    image: postgres:17-alpine
+    restart: unless-stopped
+    mem_limit: 256m
+    environment:
+      POSTGRES_DB: postiz
+      POSTGRES_USER: postiz
+      POSTGRES_PASSWORD: ${POSTIZ_POSTGRES_PASSWORD:?}
+    volumes:
+      - postiz_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postiz -d postiz"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - data
+
+  postiz_redis:
+    profiles: ["social"]
+    image: redis:7.2
+    restart: unless-stopped
+    mem_limit: 128m
+    volumes:
+      - postiz_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - data
+
+  # Postiz usa Temporal como motor de workflows (programar/publicar). Más pesado que el resto
+  # del stack (Elasticsearch incluido) — medir RAM real antes de decidir si se reduce (LAB13 cap. 7).
+  temporal_postgres:
+    profiles: ["social"]
+    image: postgres:16
+    restart: unless-stopped
+    mem_limit: 256m
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: ${TEMPORAL_POSTGRES_PASSWORD:?}
+    volumes:
+      - temporal_postgres_data:/var/lib/postgresql/data
+    networks:
+      - data
+
+  temporal_elasticsearch:
+    profiles: ["social"]
+    image: elasticsearch:7.17.27
+    restart: unless-stopped
+    mem_limit: 1g
+    environment:
+      cluster.routing.allocation.disk.threshold_enabled: "true"
+      discovery.type: single-node
+      ES_JAVA_OPTS: "-Xms256m -Xmx256m"
+      xpack.security.enabled: "false"
+    volumes:
+      - temporal_elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - data
+
+  temporal:
+    profiles: ["social"]
+    image: temporalio/auto-setup:1.28.1
+    restart: unless-stopped
+    mem_limit: 512m
+    depends_on:
+      - temporal_postgres
+      - temporal_elasticsearch
+    environment:
+      DB: postgres12
+      DB_PORT: "5432"
+      POSTGRES_USER: temporal
+      POSTGRES_PWD: ${TEMPORAL_POSTGRES_PASSWORD:?}
+      POSTGRES_SEEDS: temporal_postgres
+      ENABLE_ES: "true"
+      ES_SEEDS: temporal_elasticsearch
+      ES_VERSION: v7
+      TEMPORAL_NAMESPACE: default
+    networks:
+      - data
+
+  # CLI de Temporal, solo para depuración del staff (docker exec); sin puerto publicado.
+  temporal_admin_tools:
+    profiles: ["social"]
+    image: temporalio/admin-tools:1.28.1-tctl-1.18.4-cli-1.4.1
+    restart: unless-stopped
+    mem_limit: 64m
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CLI_ADDRESS: temporal:7233
+    depends_on:
+      - temporal
+    stdin_open: true
+    tty: true
+    networks:
+      - data
+
+  temporal_ui:
+    profiles: ["social"]
+    image: temporalio/ui:2.34.0
+    restart: unless-stopped
+    mem_limit: 128m
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+    ports:
+      # Igual que Activepieces/Postiz: solo localhost del VPS, túnel SSH. Puerto distinto por cliente
+      # (el 8080 público de la guía de Postiz NO se usa aquí a propósito: ya chocó una vez en local).
+      - "127.0.0.1:${TEMPORAL_UI_ADMIN_PORT:?}:8080"
+    networks:
+      - data
+
+  # Vigila si el cliente ha cambiado las credenciales de sus apps de redes sociales en
+  # VrutalOS y, si es así, reinicia Postiz para que boot.sh las vuelva a leer. Es la única
+  # forma: Postiz las lee del entorno del proceso, y eso no se cambia en caliente.
+  # Nunca ve una credencial (solo pide una huella) ni toca el socket de Docker directamente.
+  postiz_agent:
+    profiles: ["social"]
+    image: curlimages/curl:8.11.1
+    restart: unless-stopped
+    mem_limit: 64m
+    environment:
+      SOCIAL_APP_ENV_URL: ${VRUTALOS_FUNCTIONS_BASE_URL:?}/social-app-env
+      SOCIAL_APP_TOKEN: ${SOCIAL_APP_TOKEN:?}
+      # Nombre real del contenedor: el proyecto de compose es el slug del cliente (-p <slug>).
+      POSTIZ_CONTAINER: ${CLIENT_SLUG}-postiz-1
+      AGENT_INTERVAL: ${POSTIZ_AGENT_INTERVAL:-30}
+    entrypoint: ["sh", "/vrutal/agent.sh"]
+    # La imagen corre como usuario sin privilegios y un volumen nombrado nace propiedad de
+    # root: sin esto no puede escribir su propia huella (detectado en vivo el 2026-10-13, el
+    # contenedor entraba en bucle de reinicio). Es root solo DENTRO de su contenedor, que no
+    # tiene más herramienta que curl, no monta el socket de Docker y solo alcanza el proxy
+    # restringido — no es root en la máquina.
+    user: "0:0"
+    volumes:
+      - ./postiz/agent.sh:/vrutal/agent.sh:ro
+      - postiz_agent_state:/state
+    depends_on:
+      docker_socket_proxy:
+        condition: service_started
+    networks:
+      # Las dos, y cada una por un motivo: `data` es interna (internal: true) y es la única
+      # forma de llegar a docker_socket_proxy, pero por eso mismo no tiene salida a internet
+      # y por `data` sola no se alcanza Supabase. `edge` da esa salida. El agente no publica
+      # puertos ni lleva etiquetas de Traefik, así que estar en `edge` no lo expone.
+      - data
+      - edge
+
+  # Intermediario ante el socket de Docker: el agente necesita reiniciar UN contenedor, no
+  # acceso completo al demonio. Solo se habilitan operaciones de contenedor; imágenes,
+  # volúmenes, redes, secretos y exec quedan denegados (por defecto en esta imagen).
+  # El socket se monta en SOLO LECTURA: la escritura real la hace el proxy, no el agente.
+  docker_socket_proxy:
+    profiles: ["social"]
+    image: tecnativa/docker-socket-proxy:0.3.0
+    restart: unless-stopped
+    mem_limit: 64m
+    environment:
+      CONTAINERS: 1
+      POST: 1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      # Solo en la red interna: no sale a `edge`, así nunca es alcanzable desde internet.
+      - data
+
+  # ── App del cliente: VrutalOS (todavía no construida; se activa con --profile app) ──
+  vrutalos_web:
+    profiles: ["app"]
+    image: ${VRUTALOS_WEB_IMAGE:-vrutalos-web:dev}
+    restart: unless-stopped
+    mem_limit: 1g
+    environment:
+      # Solo claves públicas: la app habla con el Supabase del cliente con la anon key y RLS.
+      VRUTALOS_SUPABASE_URL: ${VRUTALOS_SUPABASE_URL:?}
+      VRUTALOS_SUPABASE_ANON_KEY: ${VRUTALOS_SUPABASE_ANON_KEY:?}
+    networks:
+      - edge
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      - traefik.http.routers.${CLIENT_SLUG}-app.rule=Host(`${CLIENT_SLUG}.${BASE_DOMAIN}`)
+      - traefik.http.routers.${CLIENT_SLUG}-app.entrypoints=${EDGE_ENTRYPOINT:-websecure}
+      - traefik.http.services.${CLIENT_SLUG}-app.loadbalancer.server.port=80
+
+volumes:
+  ap_cache:
+  ap_postgres_data:
+  ap_redis_data:
+  memory_postgres_data:
+  qdrant_data:
+  postiz_config:
+  postiz_uploads:
+  postiz_postgres_data:
+  postiz_redis_data:
+  temporal_postgres_data:
+  temporal_elasticsearch_data:
+  postiz_agent_state:
+
+networks:
+  # Bases de datos: red sin salida a internet. Solo Activepieces llega hasta ellas.
+  data:
+    internal: true
+  # Compartida con el edge del VPS (Traefik) y con salida a internet para las APIs del cliente.
+  edge:
+    external: true

@@ -1,0 +1,13 @@
+# Edge en local (tu máquina, sin dominio público): HTTP simple, sin Let's Encrypt.
+# El navegador resuelve *.localhost a 127.0.0.1 sin tocar DNS: http://lab.localhost:8088
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml --env-file .env.local up -d
+services:
+  traefik:
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=edge
+      # En local, la entrada "web" es la única: las instancias usan EDGE_ENTRYPOINT=web.
+      - --entrypoints.web.address=:80
+      - --api.dashboard=false
+      - --log.level=INFO

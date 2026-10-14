@@ -1,0 +1,45 @@
+# ─────────────────────────────────────────────────────────────
+# Edge de un VPS: un único Traefik para todas las instancias de cliente de esa máquina.
+# LAB08 Anexo B. Las instancias (infra/instance) se enganchan a la red externa "edge".
+#   docker network create edge        (una vez por VPS)
+#   docker compose --env-file .env up -d
+# En local (sin dominio público): docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+# ─────────────────────────────────────────────────────────────
+services:
+  traefik:
+    image: traefik:v3.7.11
+    container_name: edge_traefik
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      # Solo se publica lo que una instancia pide con la etiqueta traefik.enable=true.
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=edge
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      # TLS en la entrada, no en cada instancia: las instancias solo eligen entrypoint.
+      - --entrypoints.websecure.http.tls.certresolver=le
+      # Certificado por subdominio de cliente (Let's Encrypt, reto TLS).
+      - --certificatesresolvers.le.acme.email=${ACME_EMAIL}
+      - --certificatesresolvers.le.acme.storage=/acme/acme.json
+      - --certificatesresolvers.le.acme.tlschallenge=true
+      - --api.dashboard=false
+      - --log.level=INFO
+    ports:
+      - "${EDGE_HTTP_PORT:-80}:80"
+      - "${EDGE_HTTPS_PORT:-443}:443"
+    volumes:
+      # Solo lectura: Traefik necesita ver los contenedores, nunca controlarlos.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_acme:/acme
+    networks:
+      - edge
+
+volumes:
+  traefik_acme:
+
+networks:
+  edge:
+    external: true

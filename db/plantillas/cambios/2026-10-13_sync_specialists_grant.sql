@@ -1,0 +1,35 @@
+-- =====================================================================
+-- Proyecto Supabase: VrutalOS del CLIENTE — uno por cliente, aplicar en EL SUYO.
+-- NO en Vrutal 1st (apmhvqlvwjcrwfaixgju): ese es el panel de control, otro proyecto.
+-- VRUTAL OS · Plano de datos del CLIENTE · El sync puede crear especialistas
+--
+-- Pareja de la migración 031 de Vrutal1st: desde el 2026-10-13 el sync (`sync-catalog`)
+-- también CREA los especialistas en esta base, no solo los busca. Antes, un especialista
+-- contratado en Vrutal1st que no estuviera aquí hacía que sus flujos, informes y KPIs se
+-- descartaran en silencio — Marketing llevaba así desde el 2026-10-09.
+--
+-- El sync escribe con una conexión Postgres directa como `vrutal_sync` (no `service_role`:
+-- ese es el rol de la API, este el de la conexión cruda). Tenía SELECT sobre `specialists`
+-- —de ahí que la búsqueda funcionara— pero no INSERT ni UPDATE: «permission denied for
+-- table specialists», detectado en vivo el 2026-10-13 al disparar el sync a mano. Es la
+-- cuarta vez que este rol se queda sin un permiso al añadir algo al sync; cualquier tabla
+-- nueva que el sync toque necesita su GRANT en la misma migración.
+--
+-- Sin DELETE a propósito: el sync nunca debe borrar un especialista. Borrarlo dejaría
+-- huérfanas sus aprobaciones y sus entregables; retirar uno es cambiar su `status` a
+-- 'retired', que es lo que hace el UPDATE (Vrutal1st manda 'cancelled' → 'retired').
+--
+-- `vrutal_sync` tiene BYPASSRLS, así que las políticas de la tabla no le afectan: lo único
+-- que faltaba era el permiso de tabla.
+--
+-- Aplicar en cada proyecto de cliente. Reversible: ver bloque al final.
+-- =====================================================================
+
+grant insert, update on public.specialists to vrutal_sync;
+
+-- ---------------------------------------------------------------------
+-- Para revertir:
+--   revoke insert, update on public.specialists from vrutal_sync;
+--   (el sync volvería a descartar en silencio los flujos de cualquier especialista
+--    contratado que no esté ya creado a mano en esta base)
+-- ---------------------------------------------------------------------
