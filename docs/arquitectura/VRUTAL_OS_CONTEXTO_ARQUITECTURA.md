@@ -126,6 +126,11 @@ Y un tercer componente que **no es una base de datos**:
 
 ## 5. Modelo de datos (estado real a 15 sep 2026)
 
+> **Cifras desfasadas (2026-10-14).** Los conteos son de 15 sep. Verificado en vivo el 14 oct:
+> `catalog.task` 1.093 · `job_role` **8** (no 2) · `job_role_task` **261** (no 62) · `domain` 3 ·
+> `process` 17 · `tenant_specialist` 5 · `tenant_specialist_flow` 67. Las tablas de octubre
+> (019-031) y las relaciones entre ellas estan en [`../BITACORA.md`](../BITACORA.md) §3 y §4.
+
 ### 5.1 Vrutal1st (control-plane) — schema `catalog` (la IP)
 
 | Tabla | Qué contiene | RLS |
@@ -210,6 +215,10 @@ Bucket de Storage: `client-files` (privado). Convención de ruta propuesta: `rep
 ---
 
 ## 6. Estado del proyecto (honesto)
+
+> **Desfasada (2026-10-14).** Esta seccion describe el estado a 15 sep. Lo que se hizo entre
+> el 19 sep y el 14 oct (los dos frontales, las tablas de octubre, aprobaciones, Postiz) esta en
+> [`../BITACORA.md`](../BITACORA.md). **Donde haya discrepancia, manda la bitacora.**
 
 **Lo que está hecho y probado:**
 - Esquema completo de ambas bases, con RLS y migraciones versionadas.

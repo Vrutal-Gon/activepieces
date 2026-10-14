@@ -8,6 +8,7 @@ Reorganizado el 2026-10-01. Qué se movió y de dónde: `MOVIMIENTOS.md`.
 
 | Carpeta | Qué hay | Fuente de verdad de… |
 |---|---|---|
+| `docs/BITACORA.md` | **Empieza por aqui.** Como esta hecho todo, por que asi y como se conecta: los dos planos, tablas, permisos, claves y deudas | Entrega de llaves / estado al dia |
 | `docs/labs/` | Los LAB vigentes en Markdown (LAB00 a LAB15 y anexos) y el BRIEF | Qué es Vrutal y cómo funciona |
 | `docs/labs/word/` | Versiones Word de los LAB; LAB07 solo existe aquí | — |
 | `docs/arquitectura/` | Contexto de arquitectura v2, modelo de datos de roles y tareas, integración O*NET/ESCO/APQC | Decisiones técnicas (D-01…) |
