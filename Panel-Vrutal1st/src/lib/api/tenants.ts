@@ -50,11 +50,29 @@ const isReportingItem = (v: unknown): v is TenantReportingItem =>
   isStrOrNull(v.description) &&
   isStrOrNull(v.status);
 
+const INTEGRATION_STATUSES: readonly string[] = ['active', 'paused', 'revoked'];
+
 const isStackChoice = (v: unknown): v is TenantStackChoice =>
-  isObj(v) && isStr(v.system_category) && isStr(v.system_option_id) && isStr(v.system_name) && isStrOrNull(v.version);
+  isObj(v) &&
+  isStr(v.system_category) &&
+  isStr(v.system_option_id) &&
+  isStr(v.system_name) &&
+  isStrOrNull(v.version) &&
+  // Los cuatro siguientes pueden faltar del todo si la 030 aún no se ha aplicado en esta base.
+  isStrOrNull(v.provider_key ?? null) &&
+  (v.integration_status == null || INTEGRATION_STATUSES.includes(v.integration_status as string)) &&
+  isStrOrNull(v.integration_validated_at ?? null) &&
+  isStrOrNull(v.integration_last_error ?? null);
 
 const isSystemOption = (v: unknown): v is SystemOption =>
-  isObj(v) && isStr(v.id) && isStr(v.system_category) && isStr(v.name) && isStrOrNull(v.version);
+  isObj(v) &&
+  isStr(v.id) &&
+  isStr(v.system_category) &&
+  isStr(v.name) &&
+  isStrOrNull(v.version) &&
+  // provider_key puede faltar del todo si la 028 aún no se ha aplicado en esta base
+  // (columna nueva) — no se rompe la pantalla por eso, se trata como null.
+  isStrOrNull(v.provider_key ?? null);
 
 const isFlow = (v: unknown): v is TenantFlow =>
   isObj(v) &&
@@ -112,6 +130,10 @@ export function listTenantSpecialists(tenantId: string, signal?: AbortSignal) {
   return rpc('staff_list_tenant_specialists', { p_tenant_id: tenantId }, isArrayOf(isSpecialist), signal);
 }
 
+export function contractSpecialist(tenantId: string, jobRoleKey: string) {
+  return rpc('staff_contract_specialist', { p_tenant_id: tenantId, p_job_role_key: jobRoleKey }, isStr);
+}
+
 export function listTenantReporting(tenantId: string, signal?: AbortSignal) {
   return rpc('staff_list_tenant_reporting', { p_tenant_id: tenantId }, isArrayOf(isReportingItem), signal);
 }
@@ -134,8 +156,8 @@ export function setTenantStackChoice(tenantId: string, option: SystemOption) {
   );
 }
 
-export function removeTenantStackChoice(tenantId: string, category: string) {
-  return rpc('remove_tenant_stack_choice', { p_tenant_id: tenantId, p_system_category: category }, isVoid);
+export function removeTenantStackChoice(tenantId: string, systemOptionId: string) {
+  return rpc('remove_tenant_stack_choice', { p_tenant_id: tenantId, p_system_option_id: systemOptionId }, isVoid);
 }
 
 export function listTenantFlows(tenantId: string, signal?: AbortSignal) {

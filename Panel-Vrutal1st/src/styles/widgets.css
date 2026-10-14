@@ -378,3 +378,93 @@ a.chip {
   text-decoration-color: var(--action);
   text-underline-offset: 3px;
 }
+
+/* Migas de pan sobre el título de página */
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.crumbs__item + .crumbs__item::before {
+  content: '›';
+  margin-right: var(--space-2);
+  color: var(--text-secondary);
+}
+
+.crumbs__link {
+  color: var(--action-text);
+  text-decoration: none;
+}
+
+.crumbs__link:hover {
+  text-decoration: underline;
+}
+
+/* Pestañas (enlaces: cada una tiene su URL). Fichas de cliente y de tarea */
+.client-tabs {
+  display: flex;
+  gap: var(--space-1);
+  margin-bottom: var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+  overflow-x: auto;
+  scrollbar-width: none; /* en pantallas estrechas se desliza sin barra visible */
+}
+
+.client-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.client-tabs__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.client-tabs__tab:hover {
+  color: var(--text-primary);
+}
+
+.client-tabs__tab[aria-current='page'] {
+  color: var(--text-primary);
+  border-bottom-color: var(--action);
+}
+
+.client-tabs__count {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+/* Campo con etiqueta encima (filtros, selectores). Compacto en todo el panel */
+.inline-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  flex: 0 0 auto;
+}
+
+.inline-field .text-input,
+.inline-form > select.text-input {
+  width: auto;
+  min-width: 9rem;
+  max-width: 22rem;
+  min-height: 2rem;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-sm);
+}

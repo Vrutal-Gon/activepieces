@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router';
 import { supabase } from '../lib/supabaseClient';
+import { PageHead } from '../components/PageHead';
+import { StatusPill } from '../components/StatusPill';
 import type { Domain, JobRoleKeySummary, Seniority } from '../lib/types';
-
-interface RoleListProps {
-  onSelectRole: (key: string) => void;
-}
+import '../styles/pages/catalog.css';
 
 const SENIORITY_TIERS: { key: Seniority | '__none__'; label: string }[] = [
   { key: 'direccion', label: 'Dirección' },
@@ -13,7 +13,7 @@ const SENIORITY_TIERS: { key: Seniority | '__none__'; label: string }[] = [
   { key: '__none__', label: 'Sin seniority' },
 ];
 
-export function RoleList({ onSelectRole }: RoleListProps) {
+export function RoleList() {
   const [keys, setKeys] = useState<JobRoleKeySummary[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -40,45 +40,54 @@ export function RoleList({ onSelectRole }: RoleListProps) {
   }
 
   return (
-    <div className="panel">
-      <h2>Roles por departamento</h2>
-      <p className="task-summary">
-        Cada tarjeta es un agente independiente (propio key, propias reglas). Si el mismo nombre
-        aparece en varios departamentos, son agentes distintos que fueron desdoblados a partir de uno
-        original.
-      </p>
-      {error && <p className="error">{error}</p>}
+    <section>
+      <PageHead crumbs={[{ label: 'Construcción · paso 1' }]} title="Roles por departamento" />
 
-      {Object.entries(grouped).map(([domainId, roles]) => (
-        <div key={domainId} className="role-group">
-          <h3>{domainId === '__none__' ? 'Sin departamento' : domainName(domainId)}</h3>
-          <div className="org-chart">
-            {SENIORITY_TIERS.map(({ key: tierKey, label }) => {
-              const tierRoles = roles.filter((r) => (r.seniority || '__none__') === tierKey);
-              if (tierRoles.length === 0) return null;
-              return (
-                <div key={tierKey} className="org-tier">
-                  <span className="org-tier-label">{label}</span>
-                  <div className="role-cards">
-                    {tierRoles.map((r) => (
-                      <button key={r.key} className="role-card-link" onClick={() => onSelectRole(r.key)}>
-                        <span className="role-card-link-name">{r.name}</span>
-                        <span className="role-card-link-key">{r.key}</span>
-                        <span className="role-card-link-meta">
-                          <span className={`badge status-${r.status}`}>{r.status}</span>
-                          <span className="badge subtle">v{r.latest_version}</span>
-                        </span>
-                      </button>
-                    ))}
+      <div className="catalog-stack">
+        <p className="catalog-note">
+          Cada tarjeta es un agente independiente (propio key, propias reglas). Si el mismo nombre aparece en varios
+          departamentos, son agentes distintos desdoblados a partir de uno original. Abre un rol para ver y enlazar sus
+          tareas.
+        </p>
+        {error && (
+          <p className="notice notice--error" role="alert">
+            {error}
+          </p>
+        )}
+
+        {Object.entries(grouped).map(([domainId, roles]) => (
+          <section key={domainId} className="table-card org">
+            <div className="table-card__head">
+              <h2 className="table-card__title">{domainId === '__none__' ? 'Sin departamento' : domainName(domainId)}</h2>
+            </div>
+            <div className="org__tiers">
+              {SENIORITY_TIERS.map(({ key: tierKey, label }) => {
+                const tierRoles = roles.filter((r) => (r.seniority || '__none__') === tierKey);
+                if (tierRoles.length === 0) return null;
+                return (
+                  <div key={tierKey} className="org__tier">
+                    <span className="eyebrow">{label}</span>
+                    <div className="org__cards">
+                      {tierRoles.map((r) => (
+                        <Link key={r.key} className="org__card" to={`/roles/${encodeURIComponent(r.key)}`}>
+                          <span className="org__name">{r.name}</span>
+                          <span className="org__key">{r.key}</span>
+                          <span>
+                            <StatusPill status={r.status} />
+                            <span className="pill">v{r.latest_version}</span>
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
+                );
+              })}
+            </div>
+          </section>
+        ))}
 
-      {keys.length === 0 && !error && <p className="empty">No hay roles todavía.</p>}
-    </div>
+        {keys.length === 0 && !error && <p className="catalog-note">No hay roles todavía.</p>}
+      </div>
+    </section>
   );
 }

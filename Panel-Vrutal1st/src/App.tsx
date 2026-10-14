@@ -11,14 +11,15 @@ import { LoginForm } from './pages/LoginForm';
 import { RoleList } from './pages/RoleList';
 import { RolePanel } from './pages/RolePanel';
 import { BlockLibrary } from './pages/BlockLibrary';
-import { Compositions } from './pages/Compositions';
 import { ProviderCatalog } from './pages/ProviderCatalog';
 import { SetNewPasswordForm } from './pages/SetNewPasswordForm';
 import { StaffTeam } from './pages/StaffTeam';
 import { PendingPage } from './pages/PendingPage';
 import { SystemCatalog } from './pages/SystemCatalog';
-import { TaskComponentLinker, type TaskRoleContext } from './pages/TaskComponentLinker';
-import type { TaskSummary } from './lib/types';
+import { TaskList } from './pages/TaskList';
+import { TaskPanel } from './pages/TaskPanel';
+import { TaskNew } from './pages/TaskNew';
+import { TicketsPage } from './pages/TicketsPage';
 import './App.css';
 
 // Secciones del diseño aprobado que aún no tienen fuente de datos.
@@ -28,12 +29,6 @@ const PENDING_SECTIONS = [
     eyebrow: 'Operación',
     title: 'Incidencias',
     source: 'Detectadas por el sistema a partir del latido de los VPS (VPS sin respuesta, pieces que fallan). Se podrán enlazar a tickets.',
-  },
-  {
-    path: 'tickets',
-    eyebrow: 'Operación',
-    title: 'Tickets',
-    source: 'Los tickets viven en client_ticket de cada cliente. Se agregarán aquí vía Edge Function.',
   },
   {
     path: 'flota',
@@ -48,14 +43,8 @@ const PENDING_SECTIONS = [
     source: 'Aprobaciones de más de 24 h sin firmar, detectadas por el latido en la base de cada cliente.',
   },
   {
-    path: 'tareas',
-    eyebrow: 'Catálogo',
-    title: 'Tareas',
-    source: 'Biblioteca de tareas del catálogo (catalog.task). Pantalla pendiente de construir; los datos ya existen.',
-  },
-  {
     path: 'catalogo-kpis',
-    eyebrow: 'Catálogo',
+    eyebrow: 'Referencias',
     title: 'KPIs y reportes',
     source: 'Definiciones de reportes y KPIs por rol (catalog.report_definition, kpi_definition). Pantalla pendiente; los datos ya existen.',
   },
@@ -67,17 +56,10 @@ const PENDING_SECTIONS = [
   },
 ];
 
-interface ComponentsPreselection {
-  task: TaskSummary;
-  context: TaskRoleContext;
-}
-
 function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [recoveryMode, setRecoveryMode] = useState(false);
-  // La tarea preseleccionada al saltar de un rol a Componentes vive en memoria, no en la URL.
-  const [preselection, setPreselection] = useState<ComponentsPreselection | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -96,13 +78,7 @@ function App() {
   if (loading) return <p className="center">Cargando…</p>;
   if (!session) return <LoginForm />;
 
-  function openComponentsForTask(task: TaskSummary, context: TaskRoleContext) {
-    setPreselection({ task, context });
-    navigate('/componentes', { state: { fromRole: true } });
-  }
-
   function signOut() {
-    setPreselection(null);
     supabase.auth.signOut();
   }
 
@@ -128,14 +104,41 @@ function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="clientes" element={<ClientsRoute />} />
           <Route path="clientes/:tenantId/:tab?" element={<ClientDetailRoute />} />
-          <Route path="roles" element={<RolesRoute />} />
-          <Route path="roles/:roleKey" element={<RoleDetailRoute onOpenComponents={openComponentsForTask} />} />
-          <Route path="componentes" element={<ComponentsRoute preselection={preselection} />} />
-          <Route path="composiciones" element={<Compositions />} />
+          <Route path="roles" element={<RoleList />} />
+          <Route path="roles/:roleKey/:tab?" element={<RoleDetailRoute />} />
+          <Route
+            path="tareas"
+            element={<TaskList target="componentes" crumbs={[{ label: 'Construcción · paso 2' }]} title="Tareas" />}
+          />
+          <Route path="tareas/nueva" element={<TaskNew />} />
+          <Route path="tareas/:taskId/:tab?" element={<TaskDetailRoute />} />
+          <Route
+            path="componentes"
+            element={
+              <TaskList
+                target="componentes"
+                crumbs={[{ label: 'Referencias' }]}
+                title="Componentes"
+                intro="Los componentes se enlazan en la ficha de cada tarea. Elige la tarea para ver o enlazar los suyos."
+              />
+            }
+          />
+          <Route
+            path="composiciones"
+            element={
+              <TaskList
+                target="composiciones"
+                crumbs={[{ label: 'Construcción · paso 4' }]}
+                title="Composiciones"
+                intro="Cada composición realiza una tarea. Elige la tarea para ver o crear sus composiciones."
+              />
+            }
+          />
           <Route path="bloques" element={<BlockLibrary />} />
-          <Route path="sistemas" element={<SystemsRoute />} />
+          <Route path="sistemas" element={<SystemCatalog />} />
           <Route path="proveedores" element={<ProviderCatalog />} />
           <Route path="equipo" element={<StaffTeam />} />
+          <Route path="tickets" element={<TicketsPage />} />
           {PENDING_SECTIONS.map((p) => (
             <Route key={p.path} path={p.path} element={<PendingPage eyebrow={p.eyebrow} title={p.title} source={p.source} />} />
           ))}
@@ -172,45 +175,14 @@ function ClientDetailRoute() {
   );
 }
 
-function RolesRoute() {
-  const navigate = useNavigate();
-  return <RoleList onSelectRole={(key) => navigate(`/roles/${encodeURIComponent(key)}`)} />;
+function RoleDetailRoute() {
+  const { roleKey = '', tab } = useParams();
+  return <RolePanel initialKey={roleKey} tab={tab} />;
 }
 
-interface RoleDetailRouteProps {
-  onOpenComponents: (task: TaskSummary, context: TaskRoleContext) => void;
-}
-
-function RoleDetailRoute({ onOpenComponents }: RoleDetailRouteProps) {
-  const { roleKey = '' } = useParams();
-  const navigate = useNavigate();
-  return <RolePanel initialKey={roleKey} onBack={() => navigate('/roles')} onOpenComponents={onOpenComponents} />;
-}
-
-interface ComponentsRouteProps {
-  preselection: ComponentsPreselection | null;
-}
-
-function ComponentsRoute({ preselection }: ComponentsRouteProps) {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const state: unknown = location.state;
-  // Desde el menú lateral se entra sin preselección; solo desde un rol se conserva.
-  const fromRole = typeof state === 'object' && state !== null && 'fromRole' in state && state.fromRole === true;
-  const active = fromRole ? preselection : null;
-  return (
-    <TaskComponentLinker
-      key={location.key}
-      initialTask={active?.task ?? null}
-      roleContext={active?.context ?? null}
-      onBack={active ? () => navigate(-1) : undefined}
-    />
-  );
-}
-
-function SystemsRoute() {
-  const navigate = useNavigate();
-  return <SystemCatalog onOpenClient={(id) => navigate(`/clientes/${encodeURIComponent(id)}`)} />;
+function TaskDetailRoute() {
+  const { taskId = '', tab } = useParams();
+  return <TaskPanel key={taskId} taskId={taskId} tab={tab} />;
 }
 
 export default App;

@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import type { Provider } from '../lib/types';
 import { ExternalLink } from '../components/ExternalLink';
+import { PageHead } from '../components/PageHead';
+import '../styles/pages/catalog.css';
 
 type EditForm = Pick<Provider, 'name' | 'category' | 'pricing_model' | 'unit_cost_est' | 'notes' | 'docs_url'>;
 
@@ -102,19 +104,24 @@ export function ProviderCatalog() {
   }
 
   return (
-    <div className="panel">
-      <h2>Proveedores</h2>
-      <p className="task-summary">
-        APIs y servicios que Vrutal paga y usa internamente para que los agentes funcionen bien
-        (Apollo.io, Clay, Apify, Hugging Face…). Es gasto operativo de Vrutal — no aparece en el
-        stack ni en la ficha del cliente.
+    <section className="catalog-stack">
+      <PageHead crumbs={[{ label: 'Referencias' }]} title="Proveedores" />
+      <p className="catalog-note">
+        APIs y servicios que Vrutal paga y usa internamente para que los agentes funcionen bien (Apollo.io, Clay, Apify,
+        Hugging Face…). Es gasto operativo de Vrutal: no aparece en el stack ni en la ficha del cliente.
       </p>
-      {error && <p className="error">{error}</p>}
+      {error && (
+        <p className="notice notice--error" role="alert">
+          {error}
+        </p>
+      )}
 
       {Object.entries(grouped).map(([category, opts]) => (
-        <div key={category} className="role-group">
-          <h3>{category}</h3>
-          <table className="linked-table">
+        <section key={category} className="table-card">
+          <div className="table-card__head">
+            <h2 className="table-card__title">{category}</h2>
+          </div>
+          <table className="data-table">
             <thead>
               <tr>
                 <th>Nombre</th>
@@ -131,21 +138,21 @@ export function ProviderCatalog() {
                   <tr key={p.id}>
                     <td>
                       <input
-                        type="text"
+                        className="text-input"
                         value={editForm.name}
                         onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                       />
                     </td>
                     <td>
                       <input
-                        type="text"
+                        className="text-input"
                         value={editForm.pricing_model || ''}
                         onChange={(e) => setEditForm({ ...editForm, pricing_model: e.target.value || null })}
                       />
                     </td>
                     <td>
                       <input
-                        type="text"
+                        className="text-input"
                         value={editForm.unit_cost_est ?? ''}
                         onChange={(e) =>
                           setEditForm({
@@ -157,22 +164,25 @@ export function ProviderCatalog() {
                     </td>
                     <td>
                       <input
-                        type="text"
+                        className="text-input"
                         value={editForm.notes || ''}
                         onChange={(e) => setEditForm({ ...editForm, notes: e.target.value || null })}
                       />
                     </td>
                     <td>
                       <input
-                        type="text"
+                        className="text-input"
                         value={editForm.docs_url || ''}
                         onChange={(e) => setEditForm({ ...editForm, docs_url: e.target.value || null })}
                       />
                     </td>
-                    <td className="row-actions">
-                      <button onClick={saveEdit}>Guardar</button>
+                    <td className="data-table__actions">
+                      <button type="button" className="btn btn--sm btn--primary" onClick={saveEdit}>
+                        Guardar
+                      </button>
                       <button
-                        className="secondary"
+                        type="button"
+                        className="btn btn--sm btn--ghost"
                         onClick={() => {
                           setEditingId(null);
                           setEditForm(null);
@@ -191,13 +201,13 @@ export function ProviderCatalog() {
                     <td>
                       <ExternalLink url={p.docs_url} label="Link" />
                     </td>
-                    <td className="row-actions">
+                    <td className="data-table__actions">
                       {isSuperadmin && (
                         <>
-                          <button className="secondary" onClick={() => startEdit(p)}>
+                          <button type="button" className="btn btn--sm btn--ghost" onClick={() => startEdit(p)}>
                             Editar
                           </button>
-                          <button className="remove" onClick={() => deleteProvider(p.id)}>
+                          <button type="button" className="btn btn--sm btn--danger" onClick={() => deleteProvider(p.id)}>
                             Eliminar
                           </button>
                         </>
@@ -208,60 +218,62 @@ export function ProviderCatalog() {
               )}
             </tbody>
           </table>
-        </div>
+        </section>
       ))}
 
-      {providers.length === 0 && !error && <p className="empty">No hay proveedores todavía.</p>}
+      {providers.length === 0 && !error && <p className="catalog-note">No hay proveedores todavía.</p>}
 
-      <div className="toolbar">
-        <button className="secondary" onClick={() => setShowNew((v) => !v)}>
+      <div className="inline-form">
+        <button type="button" className="btn btn--ghost" onClick={() => setShowNew((v) => !v)}>
           {showNew ? 'Cancelar' : '+ Nuevo proveedor'}
         </button>
       </div>
 
       {showNew && (
-        <form className="new-component-form" onSubmit={createProvider}>
+        <form className="inline-form" onSubmit={createProvider}>
           <input
-            type="text"
+            className="text-input"
             placeholder="Nombre (ej. Apollo.io)"
             value={newProvider.name}
             onChange={(e) => setNewProvider({ ...newProvider, name: e.target.value })}
             required
           />
           <input
-            type="text"
+            className="text-input"
             placeholder="categoría (ej. enrichment, scraping, ai_inference)"
             value={newProvider.category}
             onChange={(e) => setNewProvider({ ...newProvider, category: e.target.value })}
             required
           />
           <input
-            type="text"
+            className="text-input"
             placeholder="modelo de precio (ej. per_credit, subscription)"
             value={newProvider.pricing_model}
             onChange={(e) => setNewProvider({ ...newProvider, pricing_model: e.target.value })}
           />
           <input
-            type="text"
+            className="text-input"
             placeholder="costo unitario estimado"
             value={newProvider.unit_cost_est}
             onChange={(e) => setNewProvider({ ...newProvider, unit_cost_est: e.target.value })}
           />
           <input
-            type="text"
+            className="text-input"
             placeholder="notas"
             value={newProvider.notes}
             onChange={(e) => setNewProvider({ ...newProvider, notes: e.target.value })}
           />
           <input
-            type="text"
+            className="text-input"
             placeholder="URL de documentación"
             value={newProvider.docs_url}
             onChange={(e) => setNewProvider({ ...newProvider, docs_url: e.target.value })}
           />
-          <button type="submit">Crear proveedor</button>
+          <button type="submit" className="btn btn--primary">
+            Crear proveedor
+          </button>
         </form>
       )}
-    </div>
+    </section>
   );
 }

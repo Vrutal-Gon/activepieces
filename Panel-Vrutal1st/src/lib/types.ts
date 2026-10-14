@@ -72,6 +72,7 @@ export interface JobRoleTaskRow extends TaskSummary {
   process_id: string | null;
   process_name: string | null;
   process_sequence: number | null;
+  primary_pattern: string | null;
 }
 
 export interface AvailableTask {
@@ -156,6 +157,9 @@ export interface SystemOption {
   version: string | null;
   connection_notes: string | null;
   docs_url: string | null;
+  /** Coincide con un `provider` de VrutalOS (`providers.ts`): si lo tiene, el sync lo habilita
+   * en Integraciones del cliente en cuanto está en su Stack. Si no, es solo informativo. */
+  provider_key: string | null;
 }
 
 export interface TenantStackChoice {
@@ -164,6 +168,12 @@ export interface TenantStackChoice {
   system_name: string;
   version: string | null;
   notes: string | null;
+  provider_key: string | null;
+  /** Estado real en VrutalOS (sync cada 15 min, migración 030) — null si no es un sistema de
+   * clave o si el cliente nunca lo configuró. */
+  integration_status: 'active' | 'paused' | 'revoked' | null;
+  integration_validated_at: string | null;
+  integration_last_error: string | null;
 }
 
 export interface TenantSpecialistDetail {
@@ -333,4 +343,92 @@ export interface FleetRow {
   specialists_paused: number;
   specialists_behind: number;
   flows_enabled: number;
+}
+
+export interface TaskListRow extends TaskSummary {
+  process_id: string | null;
+  process_name: string | null;
+  primary_pattern: string | null;
+  role_count: number;
+  component_count: number;
+  composition_count: number;
+  total_count: number;
+}
+
+export interface TaskRoleRow {
+  job_role_id: string;
+  key: string;
+  name: string;
+  version: number;
+  status: string;
+  domain_id: string | null;
+  domain_name: string | null;
+  effect_classification: EffectClassification;
+  criticality: Criticality;
+}
+
+export interface TaskDetail extends TaskSummary {
+  process_id: string | null;
+  process_name: string | null;
+  primary_pattern: string | null;
+  risk: string | null;
+  status: string;
+}
+
+export interface Process {
+  id: string;
+  name: string;
+  domain_id: string;
+  sequence_ord: number | null;
+}
+
+/** Instancia Docker del cliente (sin secretos). */
+export interface TenantInstance {
+  host: string | null;
+  public_url: string | null;
+  template_version: string | null;
+  ap_version: string | null;
+  app_version: string | null;
+  notes: string | null;
+  updated_at: string;
+  updated_by_name: string | null;
+  postiz_key_set: boolean;
+}
+
+export type TenantInstanceEditable = Omit<TenantInstance, 'updated_at' | 'updated_by_name' | 'postiz_key_set'>;
+
+export interface OnboardingStep {
+  step_key: string;
+  ord: number;
+  done_at: string | null;
+  done_by_name: string | null;
+  evidence: string | null;
+  can_complete: boolean;
+  can_reopen: boolean;
+}
+
+export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
+export type TicketPriority = 'low' | 'normal' | 'high' | 'urgent';
+
+export interface StaffTicketRow {
+  id: string;
+  tenant_id: string;
+  tenant_name: string;
+  subject: string;
+  status: TicketStatus;
+  priority: TicketPriority;
+  created_by_label: string;
+  assigned_to: string | null;
+  assigned_to_name: string | null;
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+}
+
+export interface StaffTicketMessage {
+  id: string;
+  author_kind: 'client_admin' | 'staff';
+  author_label: string;
+  body: string;
+  created_at: string;
 }

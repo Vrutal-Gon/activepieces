@@ -13,6 +13,7 @@ interface NavItem {
   to: string;
   label: string;
   icon: string;
+  step?: number;
   superadminOnly?: boolean;
 }
 
@@ -25,9 +26,11 @@ type Workspace = 'operacion' | 'plataforma';
 
 // Operación = día a día con clientes. Plataforma = catálogo y equipo (el antiguo "Developer").
 // Solo UX: cada RPC comprueba el rol en el servidor.
-const WORKSPACES: Record<Workspace, { label: string; home: string; groups: NavGroup[] }> = {
+const WORKSPACES: Record<Workspace, { label: string; hint: string; icon: string; home: string; groups: NavGroup[] }> = {
   operacion: {
     label: 'Operación',
+    hint: 'Clientes y flota',
+    icon: '◉',
     home: '/dashboard',
     groups: [
       {
@@ -45,16 +48,24 @@ const WORKSPACES: Record<Workspace, { label: string; home: string; groups: NavGr
   },
   plataforma: {
     label: 'Plataforma',
+    hint: 'Catálogo y equipo',
+    icon: '⬡',
     home: '/roles',
     groups: [
       {
-        label: 'Catálogo',
+        // En el orden en que se construye un especialista.
+        label: 'Construcción',
         items: [
-          { to: '/roles', label: 'Roles', icon: '◆' },
-          { to: '/tareas', label: 'Tareas', icon: '☰' },
+          { to: '/roles', label: 'Roles', icon: '◆', step: 1 },
+          { to: '/tareas', label: 'Tareas', icon: '☰', step: 2 },
+          { to: '/bloques', label: 'Bloques', icon: '▤', step: 3 },
+          { to: '/composiciones', label: 'Composiciones', icon: '⇶', step: 4 },
+        ],
+      },
+      {
+        label: 'Referencias',
+        items: [
           { to: '/componentes', label: 'Componentes', icon: '⬡' },
-          { to: '/composiciones', label: 'Composiciones', icon: '⇶' },
-          { to: '/bloques', label: 'Bloques', icon: '▤' },
           { to: '/catalogo-kpis', label: 'KPIs y reportes', icon: '▦' },
           { to: '/sistemas', label: 'Stack / Sistemas', icon: '⧉' },
           { to: '/proveedores', label: 'Proveedores', icon: '◌' },
@@ -126,7 +137,7 @@ export function AppShell({ email, onSignOut }: AppShellProps) {
   const displayName = identity.full_name || identity.email;
 
   return (
-    <div className="shell">
+    <div className="shell" data-workspace={current}>
       <aside id="shell-nav" className={navOpen ? 'shell__side shell__side--open' : 'shell__side'}>
         <img className="shell__logo" src="/vrutal-lockup-dark.svg" alt="Vrutal Labs" />
 
@@ -135,11 +146,15 @@ export function AppShell({ email, onSignOut }: AppShellProps) {
             <Link
               key={w}
               to={WORKSPACES[w].home}
-              className="workspace__option"
+              className={`workspace__option workspace__option--${w}`}
               aria-current={w === current ? 'true' : undefined}
               onClick={() => setNavOpen(false)}
             >
-              {WORKSPACES[w].label}
+              <span className="workspace__icon" aria-hidden="true">
+                {WORKSPACES[w].icon}
+              </span>
+              <span className="workspace__label">{WORKSPACES[w].label}</span>
+              <span className="workspace__hint">{WORKSPACES[w].hint}</span>
             </Link>
           ))}
         </div>
@@ -152,9 +167,15 @@ export function AppShell({ email, onSignOut }: AppShellProps) {
                 .filter((item) => !item.superadminOnly || isSuperadmin)
                 .map((item) => (
                   <NavLink key={item.to} to={item.to} className="side-nav__link" onClick={() => setNavOpen(false)}>
-                    <span className="side-nav__icon" aria-hidden="true">
-                      {item.icon}
-                    </span>
+                    {item.step ? (
+                      <span className="side-nav__step" aria-hidden="true">
+                        {item.step}
+                      </span>
+                    ) : (
+                      <span className="side-nav__icon" aria-hidden="true">
+                        {item.icon}
+                      </span>
+                    )}
                     {item.label}
                   </NavLink>
                 ))}
@@ -167,30 +188,43 @@ export function AppShell({ email, onSignOut }: AppShellProps) {
       {navOpen && <div className="shell__scrim" onClick={() => setNavOpen(false)} aria-hidden="true" />}
 
       <div className="shell__body">
-        <header className="topbar">
-          <button
-            type="button"
-            className="icon-button topbar__nav-toggle"
-            aria-expanded={navOpen}
-            aria-controls="shell-nav"
-            aria-label="Menú de navegación"
-            onClick={() => setNavOpen((v) => !v)}
-          >
-            <BurgerIcon />
-          </button>
-          <GlobalSearch />
-          <span className="topbar__env" title="Entorno">
-            {import.meta.env.PROD ? 'PROD' : 'DEV'}
-          </span>
-          <span className="topbar__spacer" />
-          <NotificationsMenu />
-          <AccountMenu
-            name={displayName}
-            email={identity.email}
-            roleLabel={identity.role_names.join(' · ')}
-            onSignOut={onSignOut}
-          />
-        </header>
+        <div className="shell__head">
+          {current === 'plataforma' && (
+            <div className="workspace-band" role="note">
+              <span className="workspace-band__label">Plataforma</span>
+              <span className="workspace-band__text">
+                Estás editando el catálogo global: los cambios afectan a todos los clientes
+              </span>
+              <Link className="workspace-band__exit" to={WORKSPACES.operacion.home}>
+                Ir a Operación →
+              </Link>
+            </div>
+          )}
+          <header className="topbar">
+            <button
+              type="button"
+              className="icon-button topbar__nav-toggle"
+              aria-expanded={navOpen}
+              aria-controls="shell-nav"
+              aria-label="Menú de navegación"
+              onClick={() => setNavOpen((v) => !v)}
+            >
+              <BurgerIcon />
+            </button>
+            <GlobalSearch />
+            <span className="topbar__env" title="Entorno">
+              {import.meta.env.PROD ? 'PROD' : 'DEV'}
+            </span>
+            <span className="topbar__spacer" />
+            <NotificationsMenu />
+            <AccountMenu
+              name={displayName}
+              email={identity.email}
+              roleLabel={identity.role_names.join(' · ')}
+              onSignOut={onSignOut}
+            />
+          </header>
+        </div>
         <main className="shell__main">
           <Outlet />
         </main>

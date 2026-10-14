@@ -1,7 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import type { SystemOption } from '../lib/types';
+import { Link } from 'react-router';
 import { ExternalLink } from '../components/ExternalLink';
+import { PageHead } from '../components/PageHead';
+import '../styles/pages/catalog.css';
 
 interface TenantForSystemOption {
   tenant_id: string;
@@ -9,13 +12,9 @@ interface TenantForSystemOption {
   system_category: string;
 }
 
-interface SystemCatalogProps {
-  onOpenClient: (tenantId: string) => void;
-}
+type EditForm = Pick<SystemOption, 'system_category' | 'name' | 'version' | 'connection_notes' | 'docs_url' | 'provider_key'>;
 
-type EditForm = Pick<SystemOption, 'system_category' | 'name' | 'version' | 'connection_notes' | 'docs_url'>;
-
-export function SystemCatalog({ onOpenClient }: SystemCatalogProps) {
+export function SystemCatalog() {
   const [options, setOptions] = useState<SystemOption[]>([]);
   const [isSuperadmin, setIsSuperadmin] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,6 +25,7 @@ export function SystemCatalog({ onOpenClient }: SystemCatalogProps) {
     version: '',
     connection_notes: '',
     docs_url: '',
+    provider_key: '',
   });
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -56,12 +56,13 @@ export function SystemCatalog({ onOpenClient }: SystemCatalogProps) {
       p_version: newOption.version || null,
       p_connection_notes: newOption.connection_notes || null,
       p_docs_url: newOption.docs_url || null,
+      p_provider_key: newOption.provider_key.trim() || null,
     });
     if (error) {
       setError(error.message);
       return;
     }
-    setNewOption({ system_category: '', name: '', version: '', connection_notes: '', docs_url: '' });
+    setNewOption({ system_category: '', name: '', version: '', connection_notes: '', docs_url: '', provider_key: '' });
     setShowNew(false);
     loadOptions();
   }
@@ -74,6 +75,7 @@ export function SystemCatalog({ onOpenClient }: SystemCatalogProps) {
       version: o.version,
       connection_notes: o.connection_notes,
       docs_url: o.docs_url,
+      provider_key: o.provider_key,
     });
   }
 
@@ -86,6 +88,7 @@ export function SystemCatalog({ onOpenClient }: SystemCatalogProps) {
       p_version: editForm.version || null,
       p_connection_notes: editForm.connection_notes || null,
       p_docs_url: editForm.docs_url || null,
+      p_provider_key: editForm.provider_key?.trim() || null,
     });
     if (error) {
       setError(error.message);
@@ -115,53 +118,63 @@ export function SystemCatalog({ onOpenClient }: SystemCatalogProps) {
   }
 
   if (selectedOption) {
+    const n = tenantsForOption.length;
     return (
-      <div className="panel">
-        <div className="toolbar">
-          <button className="secondary" onClick={() => setSelectedOption(null)}>
-            ← Volver a Sistemas
+      <section className="catalog-stack">
+        <PageHead
+          crumbs={[{ label: 'Referencias' }, { label: 'Stack / Sistemas' }]}
+          title={
+            <>
+              {selectedOption.name}
+              {selectedOption.version ? ` (${selectedOption.version})` : ''}{' '}
+              <span className="pill">{selectedOption.system_category}</span>
+            </>
+          }
+        >
+          <button type="button" className="btn btn--ghost" onClick={() => setSelectedOption(null)}>
+            ← Todos los sistemas
           </button>
-        </div>
-        {error && <p className="error">{error}</p>}
-        <h2>
-          {selectedOption.name}
-          {selectedOption.version ? ` (${selectedOption.version})` : ''}{' '}
-          <span className="badge subtle">{selectedOption.system_category}</span>
-        </h2>
-        <p className="task-summary">
-          <strong>{tenantsForOption.length}</strong> cliente{tenantsForOption.length === 1 ? '' : 's'} lo
-          tiene{tenantsForOption.length === 1 ? '' : 'n'} definido en su stack.
-        </p>
-        <table className="linked-table">
-          <thead>
-            <tr>
-              <th>Cliente</th>
-              <th>Categoría</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {tenantsForOption.map((t) => (
-              <tr key={t.tenant_id}>
-                <td>{t.tenant_name}</td>
-                <td>{t.system_category}</td>
-                <td>
-                  <button className="secondary" onClick={() => onOpenClient(t.tenant_id)}>
-                    Ver cliente
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {tenantsForOption.length === 0 && (
+        </PageHead>
+        {error && (
+          <p className="notice notice--error" role="alert">
+            {error}
+          </p>
+        )}
+        <section className="table-card">
+          <div className="table-card__head">
+            <h2 className="table-card__title">
+              {n} cliente{n === 1 ? '' : 's'} lo tiene{n === 1 ? '' : 'n'} en su stack
+            </h2>
+          </div>
+          <table className="data-table">
+            <thead>
               <tr>
-                <td colSpan={3} className="empty">
-                  Ningún cliente lo tiene en su stack todavía.
-                </td>
+                <th>Cliente</th>
+                <th>Categoría</th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {tenantsForOption.map((t) => (
+                <tr key={t.tenant_id}>
+                  <td>
+                    <Link className="data-table__primary" to={`/clientes/${encodeURIComponent(t.tenant_id)}/stack`}>
+                      {t.tenant_name}
+                    </Link>
+                  </td>
+                  <td className="mono">{t.system_category}</td>
+                </tr>
+              ))}
+              {n === 0 && (
+                <tr>
+                  <td colSpan={2} className="data-table__empty">
+                    Ningún cliente lo tiene en su stack todavía.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </section>
+      </section>
     );
   }
 
@@ -171,25 +184,38 @@ export function SystemCatalog({ onOpenClient }: SystemCatalogProps) {
   }
 
   return (
-    <div className="panel">
-      <h2>Sistemas</h2>
-      <p className="task-summary">
-        El catálogo de sistemas que un cliente puede tener en su stack (ERP, CRM, email…). Si el
-        sistema de un cliente no está acá, agrégalo primero — así queda disponible para elegir
-        desde la ficha del cliente.
+    <section className="catalog-stack">
+      <PageHead crumbs={[{ label: 'Referencias' }]} title="Stack / Sistemas" />
+      <p className="catalog-note">
+        El catálogo de sistemas que un cliente puede tener en su stack (ERP, CRM, email…). Si el sistema de un cliente
+        no está aquí, agrégalo primero: así queda disponible para elegir desde la ficha del cliente.
       </p>
-      {error && <p className="error">{error}</p>}
+      <p className="catalog-note">
+        <strong>Proveedor en VrutalOS</strong> es opcional: solo lo llevan los sistemas donde el Admin del cliente
+        pega su propia clave (hoy <code>hubspot</code>, <code>anthropic</code> — el identificador exacto de
+        <code>app/src/lib/providers.ts</code> en VrutalOS). Si lo pones, el sync (cada 15 min) habilita ese sistema en
+        Integraciones de cada cliente que lo tenga en su Stack — sin tocar SQL. Si lo dejas vacío, el sistema queda
+        solo como dato informativo (p. ej. un ERP), igual que hasta ahora.
+      </p>
+      {error && (
+        <p className="notice notice--error" role="alert">
+          {error}
+        </p>
+      )}
 
       {Object.entries(grouped).map(([category, opts]) => (
-        <div key={category} className="role-group">
-          <h3>{category}</h3>
-          <table className="linked-table">
+        <section key={category} className="table-card">
+          <div className="table-card__head">
+            <h2 className="table-card__title">{category}</h2>
+          </div>
+          <table className="data-table">
             <thead>
               <tr>
                 <th>Nombre</th>
                 <th>Versión</th>
                 <th>Cómo conectar</th>
                 <th>Docs</th>
+                <th>Proveedor en VrutalOS</th>
                 <th></th>
               </tr>
             </thead>
@@ -199,21 +225,21 @@ export function SystemCatalog({ onOpenClient }: SystemCatalogProps) {
                   <tr key={o.id}>
                     <td>
                       <input
-                        type="text"
+                        className="text-input"
                         value={editForm.name}
                         onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                       />
                     </td>
                     <td>
                       <input
-                        type="text"
+                        className="text-input"
                         value={editForm.version || ''}
                         onChange={(e) => setEditForm({ ...editForm, version: e.target.value || null })}
                       />
                     </td>
                     <td>
                       <input
-                        type="text"
+                        className="text-input"
                         value={editForm.connection_notes || ''}
                         onChange={(e) =>
                           setEditForm({ ...editForm, connection_notes: e.target.value || null })
@@ -222,15 +248,26 @@ export function SystemCatalog({ onOpenClient }: SystemCatalogProps) {
                     </td>
                     <td>
                       <input
-                        type="text"
+                        className="text-input"
                         value={editForm.docs_url || ''}
                         onChange={(e) => setEditForm({ ...editForm, docs_url: e.target.value || null })}
                       />
                     </td>
-                    <td className="row-actions">
-                      <button onClick={saveEdit}>Guardar</button>
+                    <td>
+                      <input
+                        className="text-input"
+                        placeholder="ej. anthropic (vacío = solo informativo)"
+                        value={editForm.provider_key || ''}
+                        onChange={(e) => setEditForm({ ...editForm, provider_key: e.target.value || null })}
+                      />
+                    </td>
+                    <td className="data-table__actions">
+                      <button type="button" className="btn btn--sm btn--primary" onClick={saveEdit}>
+                        Guardar
+                      </button>
                       <button
-                        className="secondary"
+                        type="button"
+                        className="btn btn--sm btn--ghost"
                         onClick={() => {
                           setEditingId(null);
                           setEditForm(null);
@@ -243,7 +280,7 @@ export function SystemCatalog({ onOpenClient }: SystemCatalogProps) {
                 ) : (
                   <tr key={o.id}>
                     <td>
-                      <button className="link-button" onClick={() => openDetail(o)}>
+                      <button type="button" className="btn-link" onClick={() => openDetail(o)}>
                         {o.name}
                       </button>
                     </td>
@@ -252,13 +289,14 @@ export function SystemCatalog({ onOpenClient }: SystemCatalogProps) {
                     <td>
                       <ExternalLink url={o.docs_url} label="Link" />
                     </td>
-                    <td className="row-actions">
+                    <td className="mono">{o.provider_key || '—'}</td>
+                    <td className="data-table__actions">
                       {isSuperadmin && (
                         <>
-                          <button className="secondary" onClick={() => startEdit(o)}>
+                          <button type="button" className="btn btn--sm btn--ghost" onClick={() => startEdit(o)}>
                             Editar
                           </button>
-                          <button className="remove" onClick={() => deleteOption(o.id)}>
+                          <button type="button" className="btn btn--sm btn--danger" onClick={() => deleteOption(o.id)}>
                             Eliminar
                           </button>
                         </>
@@ -269,54 +307,62 @@ export function SystemCatalog({ onOpenClient }: SystemCatalogProps) {
               )}
             </tbody>
           </table>
-        </div>
+        </section>
       ))}
 
-      {options.length === 0 && !error && <p className="empty">No hay sistemas todavía.</p>}
+      {options.length === 0 && !error && <p className="catalog-note">No hay sistemas todavía.</p>}
 
-      <div className="toolbar">
-        <button className="secondary" onClick={() => setShowNew((v) => !v)}>
+      <div className="inline-form">
+        <button type="button" className="btn btn--ghost" onClick={() => setShowNew((v) => !v)}>
           {showNew ? 'Cancelar' : '+ Nuevo sistema'}
         </button>
       </div>
 
       {showNew && (
-        <form className="new-component-form" onSubmit={createOption}>
+        <form className="inline-form" onSubmit={createOption}>
           <input
-            type="text"
+            className="text-input"
             placeholder="categoría (ej. erp, crm, email)"
             value={newOption.system_category}
             onChange={(e) => setNewOption({ ...newOption, system_category: e.target.value })}
             required
           />
           <input
-            type="text"
+            className="text-input"
             placeholder="Nombre (ej. SAP S/4HANA)"
             value={newOption.name}
             onChange={(e) => setNewOption({ ...newOption, name: e.target.value })}
             required
           />
           <input
-            type="text"
+            className="text-input"
             placeholder="versión (ej. R/3, on-premise 2023)"
             value={newOption.version}
             onChange={(e) => setNewOption({ ...newOption, version: e.target.value })}
           />
           <input
-            type="text"
+            className="text-input"
             placeholder="cómo conectar / notas"
             value={newOption.connection_notes}
             onChange={(e) => setNewOption({ ...newOption, connection_notes: e.target.value })}
           />
           <input
-            type="text"
+            className="text-input"
             placeholder="URL de documentación"
             value={newOption.docs_url}
             onChange={(e) => setNewOption({ ...newOption, docs_url: e.target.value })}
           />
-          <button type="submit">Crear sistema</button>
+          <input
+            className="text-input"
+            placeholder="proveedor en VrutalOS (ej. anthropic — vacío si es solo informativo)"
+            value={newOption.provider_key}
+            onChange={(e) => setNewOption({ ...newOption, provider_key: e.target.value })}
+          />
+          <button type="submit" className="btn btn--primary">
+            Crear sistema
+          </button>
         </form>
       )}
-    </div>
+    </section>
   );
 }

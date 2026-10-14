@@ -1,5 +1,10 @@
 import { Fragment, useCallback, useEffect, useState } from 'react';
+import { Link, NavLink, useNavigate } from 'react-router';
 import { supabase } from '../lib/supabaseClient';
+import { PageHead } from '../components/PageHead';
+import { StatusPill } from '../components/StatusPill';
+import { TaskTypeFilters } from '../components/TaskTypeFilters';
+import '../styles/pages/catalog.css';
 import type {
   AvailableTask,
   Criticality,
@@ -14,7 +19,6 @@ import type {
   TenantForRole,
   TenantSpecialistStatus,
 } from '../lib/types';
-import type { TaskRoleContext } from './TaskComponentLinker';
 
 const EFFECT_OPTIONS: EffectClassification[] = ['read_only', 'reversible', 'irreversible'];
 const CRITICALITY_OPTIONS: Criticality[] = ['core', 'standard', 'peripheral'];
@@ -56,13 +60,26 @@ function toEditableFields(role: JobRoleFull): EditableFields {
   };
 }
 
+const ROLE_TABS = [
+  { key: 'tareas', label: 'Tareas' },
+  { key: 'anadir', label: 'Añadir tareas' },
+  { key: 'ficha', label: 'Ficha' },
+  { key: 'clientes', label: 'Clientes' },
+] as const;
+
+type RoleTab = (typeof ROLE_TABS)[number]['key'];
+
+const isRoleTab = (v: string | undefined): v is RoleTab => ROLE_TABS.some((t) => t.key === v);
+
 interface RolePanelProps {
   initialKey: string;
-  onBack: () => void;
-  onOpenComponents: (task: TaskSummary, roleContext: TaskRoleContext) => void;
+  /** Pestaña de la URL (/roles/:key/:tab); por defecto, Tareas. */
+  tab: string | undefined;
 }
 
-export function RolePanel({ initialKey, onBack, onOpenComponents }: RolePanelProps) {
+export function RolePanel({ initialKey, tab }: RolePanelProps) {
+  const activeTab: RoleTab = isRoleTab(tab) ? tab : 'tareas';
+  const navigate = useNavigate();
   const [selectedKey, setSelectedKey] = useState(initialKey);
   const [versions, setVersions] = useState<JobRoleVersionSummary[]>([]);
   const [selectedVersionId, setSelectedVersionId] = useState('');
@@ -86,6 +103,8 @@ export function RolePanel({ initialKey, onBack, onOpenComponents }: RolePanelPro
   const [taskSearchResults, setTaskSearchResults] = useState<TaskSummary[]>([]);
   const [effectFilter, setEffectFilter] = useState('');
   const [criticalityFilter, setCriticalityFilter] = useState('');
+  const [processFilter, setProcessFilter] = useState<string | null>(null);
+  const [patternFilter, setPatternFilter] = useState<string | null>(null);
 
   const [tenantVersionFilter, setTenantVersionFilter] = useState('');
   const [tenantStatusFilter, setTenantStatusFilter] = useState('');
@@ -244,7 +263,7 @@ export function RolePanel({ initialKey, onBack, onOpenComponents }: RolePanelPro
     setShowForkForm(false);
     setForkKey('');
     setForkDomainId('');
-    setSelectedKey(forkKey.trim());
+    navigate(`/roles/${encodeURIComponent(forkKey.trim())}`);
   }
 
   async function addTask(task: TaskSummary) {
@@ -281,20 +300,7 @@ export function RolePanel({ initialKey, onBack, onOpenComponents }: RolePanelPro
       return;
     }
     setSelectedVersionId(match.id);
-  }
-
-  function openTaskDetail(task: JobRoleTaskRow) {
-    if (!role) return;
-    onOpenComponents(
-      { id: task.task_id, task_code: task.task_code, statement: task.statement },
-      {
-        jobRoleId: role.id,
-        roleName: role.name,
-        roleVersion: role.version,
-        effectClassification: task.effect_classification,
-        criticality: task.criticality,
-      },
-    );
+    navigate(`/roles/${encodeURIComponent(selectedKey)}/ficha`);
   }
 
   const linkedTaskIds = new Set(tasks.map((t) => t.task_id));
@@ -307,6 +313,8 @@ export function RolePanel({ initialKey, onBack, onOpenComponents }: RolePanelPro
 
   const filteredTasks = tasks.filter(
     (t) =>
+      (!processFilter || t.process_id === processFilter) &&
+      (!patternFilter || t.primary_pattern === patternFilter) &&
       (!effectFilter || t.effect_classification === effectFilter) &&
       (!criticalityFilter || t.criticality === criticalityFilter),
   );
@@ -321,144 +329,86 @@ export function RolePanel({ initialKey, onBack, onOpenComponents }: RolePanelPro
     peripheral: tasks.filter((t) => t.criticality === 'peripheral').length,
   };
 
+
+  // Con búsqueda activa se muestran sus resultados; si no, las sugeridas del departamento.
+  const addableTasks: (TaskSummary & { process_name?: string | null })[] =
+    taskSearchResults.length > 0 ? taskSearchResults : availableTasks;
+
+  const tabCount: Record<RoleTab, number | null> = {
+    tareas: tasks.length,
+    anadir: null,
+    ficha: null,
+    clientes: tenants.length,
+  };
+
+  const domainName = (id: string | null) => domains.find((d) => d.id === id)?.name || id || '—';
+
   return (
-    <div className="panel">
-      <div className="toolbar">
-        <button className="secondary" onClick={onBack}>
-          ← Volver a Roles
-        </button>
-        <label>
-          Versión:
-          <select value={selectedVersionId} onChange={(e) => setSelectedVersionId(e.target.value)}>
-            {versions.map((v) => (
-              <option key={v.id} value={v.id}>
-                v{v.version} ({v.status})
-              </option>
-            ))}
-          </select>
-        </label>
-        <button className="secondary" onClick={createNewVersion}>
-          + Nueva versión
-        </button>
-        <button className="secondary" onClick={() => setShowForkForm((v) => !v)}>
-          ⑂ Desdoblar a otro departamento
-        </button>
-      </div>
-
-      {error && <p className="error">{error}</p>}
-
-      {showForkForm && role && (
-        <div className="fork-form">
-          <p className="fork-form-note">
-            Crea un agente independiente (propio key, propia versión desde v1, mismo nombre) para otro
-            departamento. Empieza como copia de <strong>{role.name}</strong> — sus reglas y tareas se
-            editan por separado desde ahí en adelante.
-          </p>
-          <label>
-            Departamento destino
-            <select value={forkDomainId} onChange={(e) => setForkDomainId(e.target.value)}>
-              <option value="">— elegir —</option>
-              {domains.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
+    <section>
+      <PageHead
+        crumbs={[{ label: 'Construcción · paso 1' }, { label: 'Roles', to: '/roles' }]}
+        title={
+          role ? (
+            <>
+              {role.name} <StatusPill status={role.status} />
+            </>
+          ) : (
+            selectedKey
+          )
+        }
+      >
+        <div className="inline-form">
+          <label className="inline-field">
+            Versión
+            <select
+              className="text-input"
+              value={selectedVersionId}
+              onChange={(e) => setSelectedVersionId(e.target.value)}
+            >
+              {versions.map((v) => (
+                <option key={v.id} value={v.id}>
+                  v{v.version} ({v.status})
                 </option>
               ))}
             </select>
           </label>
-          <label>
-            Key del nuevo agente
-            <input
-              placeholder={`${role.key}_...`}
-              value={forkKey}
-              onChange={(e) => setForkKey(e.target.value)}
-            />
-          </label>
-          <button onClick={forkRole} disabled={forking || !forkDomainId || !forkKey.trim()}>
-            {forking ? 'Creando…' : 'Crear agente'}
+          <button type="button" className="btn btn--ghost" onClick={createNewVersion}>
+            + Nueva versión
+          </button>
+          <button type="button" className="btn btn--ghost" onClick={() => setShowForkForm((v) => !v)}>
+            ⑂ Desdoblar
           </button>
         </div>
-      )}
+      </PageHead>
 
-      {role && (
-        <div className="role-card">
-          <div className="role-card-header">
-            <h2>
-              {role.name} <span className="badge">v{role.version}</span>{' '}
-              <span className={`badge status-${role.status}`}>{role.status}</span>
-            </h2>
-            {!editing ? (
-              <button onClick={startEditing}>Editar</button>
-            ) : (
-              <div className="role-card-actions">
-                <button onClick={saveRole} disabled={saving}>
-                  {saving ? 'Guardando…' : 'Guardar'}
-                </button>
-                <button className="secondary" onClick={() => setEditing(false)}>
-                  Cancelar
-                </button>
-              </div>
-            )}
-          </div>
-          <p className="role-key">{role.key}</p>
+      <div className="catalog-stack">
+        {role && (
+          <p className="catalog-note role-summary">
+            <span className="mono">{role.key}</span> · v{role.version} · {domainName(role.domain_id)}
+            {role.seniority ? ` · ${role.seniority}` : ''} · riesgo {role.risk_level}
+            {role.mission ? <span className="role-summary__mission">{role.mission}</span> : null}
+          </p>
+        )}
+        {error && (
+          <p className="notice notice--error" role="alert">
+            {error}
+          </p>
+        )}
 
-          {!editing || !form ? (
-            <div className="role-fields">
-              <div className="field">
-                <span className="field-label">Departamento</span>
-                <span className="field-value">
-                  {domains.find((d) => d.id === role.domain_id)?.name || role.domain_id || '—'}
-                </span>
-              </div>
-              <div className="field">
-                <span className="field-label">Familia</span>
-                <span className="field-value">{role.family || '—'}</span>
-              </div>
-              <div className="field">
-                <span className="field-label">Seniority</span>
-                <span className="field-value">{role.seniority || '—'}</span>
-              </div>
-              <div className="field">
-                <span className="field-label">Riesgo</span>
-                <span className="field-value">{role.risk_level}</span>
-              </div>
-              <div className="field">
-                <span className="field-label">Model tier</span>
-                <span className="field-value">{role.model_tier || '—'}</span>
-              </div>
-              <div className="field">
-                <span className="field-label">Consulta memoria antes de producir</span>
-                <span className="field-value">{role.consults_memory_before_producing ? 'Sí' : 'No'}</span>
-              </div>
-              <div className="field full-width">
-                <span className="field-label">Misión</span>
-                <span className="field-value">{role.mission || '—'}</span>
-              </div>
-              <div className="field full-width">
-                <span className="field-label">Alcance de autonomía</span>
-                <span className="field-value">{role.autonomy_scope}</span>
-              </div>
-              <div className="field full-width">
-                <span className="field-label">Requiere aprobación en</span>
-                <span className="field-value">{role.requires_approval_scope}</span>
-              </div>
-              <div className="field full-width">
-                <span className="field-label">Nunca hace</span>
-                <span className="field-value">{role.never_does}</span>
-              </div>
+        {showForkForm && role && (
+          <section className="table-card">
+            <div className="table-card__head">
+              <h2 className="table-card__title">Desdoblar a otro departamento</h2>
+              <p className="catalog-note">
+                Crea un agente independiente (propio key, propia versión desde v1, mismo nombre) para otro departamento.
+                Empieza como copia de <strong>{role.name}</strong>: sus reglas y tareas se editan por separado desde ahí.
+              </p>
             </div>
-          ) : (
-            <div className="role-fields-edit">
-              <label>
-                Nombre
-                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-              </label>
-              <label>
-                Departamento
-                <select
-                  value={form.domain_id || ''}
-                  onChange={(e) => setForm({ ...form, domain_id: e.target.value || null })}
-                >
-                  <option value="">—</option>
+            <div className="table-card__foot inline-form">
+              <label className="inline-field">
+                Departamento destino
+                <select className="text-input" value={forkDomainId} onChange={(e) => setForkDomainId(e.target.value)}>
+                  <option value="">— elegir —</option>
                   {domains.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.name}
@@ -466,311 +416,490 @@ export function RolePanel({ initialKey, onBack, onOpenComponents }: RolePanelPro
                   ))}
                 </select>
               </label>
-              <label>
-                Familia
+              <label className="inline-field">
+                Key del nuevo agente
                 <input
-                  value={form.family || ''}
-                  onChange={(e) => setForm({ ...form, family: e.target.value || null })}
+                  className="text-input"
+                  placeholder={`${role.key}_...`}
+                  value={forkKey}
+                  onChange={(e) => setForkKey(e.target.value)}
                 />
               </label>
-              <label>
-                Seniority
-                <select
-                  value={form.seniority || ''}
-                  onChange={(e) => setForm({ ...form, seniority: (e.target.value || null) as Seniority | null })}
-                >
-                  <option value="">—</option>
-                  {SENIORITY_OPTIONS.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Riesgo
-                <select
-                  value={form.risk_level}
-                  onChange={(e) => setForm({ ...form, risk_level: e.target.value as RiskLevel })}
-                >
-                  {RISK_OPTIONS.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Model tier
-                <input
-                  value={form.model_tier || ''}
-                  onChange={(e) => setForm({ ...form, model_tier: e.target.value || null })}
-                />
-              </label>
-              <label>
-                Estado
-                <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as JobRoleFull['status'] })}>
-                  {STATUS_OPTIONS.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={form.consults_memory_before_producing}
-                  onChange={(e) => setForm({ ...form, consults_memory_before_producing: e.target.checked })}
-                />
-                Consulta memoria antes de producir
-              </label>
-              <label className="full-width">
-                Misión
-                <textarea
-                  value={form.mission || ''}
-                  onChange={(e) => setForm({ ...form, mission: e.target.value || null })}
-                />
-              </label>
-              <label className="full-width">
-                Alcance de autonomía
-                <textarea
-                  value={form.autonomy_scope}
-                  onChange={(e) => setForm({ ...form, autonomy_scope: e.target.value })}
-                />
-              </label>
-              <label className="full-width">
-                Requiere aprobación en
-                <textarea
-                  value={form.requires_approval_scope}
-                  onChange={(e) => setForm({ ...form, requires_approval_scope: e.target.value })}
-                />
-              </label>
-              <label className="full-width">
-                Nunca hace
-                <textarea
-                  value={form.never_does}
-                  onChange={(e) => setForm({ ...form, never_does: e.target.value })}
-                />
-              </label>
+              <button
+                type="button"
+                className="btn btn--primary"
+                onClick={forkRole}
+                disabled={forking || !forkDomainId || !forkKey.trim()}
+              >
+                {forking ? 'Creando…' : 'Crear agente'}
+              </button>
             </div>
-          )}
-        </div>
-      )}
-
-      <h3>Clientes con este rol</h3>
-      <div className="toolbar">
-        <label>
-          Versión:
-          <select value={tenantVersionFilter} onChange={(e) => setTenantVersionFilter(e.target.value)}>
-            <option value="">Todas</option>
-            {versions.map((v) => (
-              <option key={v.id} value={v.version}>
-                v{v.version}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Estado:
-          <select value={tenantStatusFilter} onChange={(e) => setTenantStatusFilter(e.target.value)}>
-            <option value="">Todos</option>
-            {TENANT_STATUS_OPTIONS.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <table className="linked-table">
-        <thead>
-          <tr>
-            <th>Cliente</th>
-            <th>Versión contratada</th>
-            <th>Estado</th>
-            <th>Contratado el</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredTenants.map((t) => (
-            <tr key={t.tenant_id}>
-              <td>{t.tenant_name}</td>
-              <td>
-                v{t.job_role_version}
-                {role && t.job_role_version !== role.version && (
-                  <span className="badge subtle"> otra versión</span>
-                )}
-              </td>
-              <td>{t.status}</td>
-              <td>{new Date(t.contracted_at).toLocaleDateString()}</td>
-              <td>
-                <button className="secondary" onClick={() => editTenantVersion(t)}>
-                  Editar esa versión
-                </button>
-              </td>
-            </tr>
-          ))}
-          {filteredTenants.length === 0 && (
-            <tr>
-              <td colSpan={5} className="empty">
-                {tenants.length === 0
-                  ? 'Ningún cliente tiene este rol contratado todavía.'
-                  : 'Ningún cliente coincide con estos filtros.'}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-
-      <h3>Tareas de este rol</h3>
-      <p className="task-summary">
-        <strong>{taskSummary.total}</strong> tareas habilitadas — {taskSummary.readOnly} read only,{' '}
-        {taskSummary.reversible} reversibles, {taskSummary.irreversible} irreversibles ·{' '}
-        {taskSummary.core} core, {taskSummary.standard} standard, {taskSummary.peripheral} peripheral
-      </p>
-
-      <div className="add-task">
-        <input
-          type="text"
-          placeholder="Buscar tarea por código o texto para enlazar…"
-          value={taskSearch}
-          onChange={(e) => setTaskSearch(e.target.value)}
-        />
-        {taskSearchResults.length > 0 && (
-          <ul className="search-results">
-            {taskSearchResults.map((t) => (
-              <li key={t.id}>
-                <span className="task-code">{t.task_code}</span>
-                <span className="task-statement">{t.statement}</span>
-                <button disabled={linkedTaskIds.has(t.id)} onClick={() => addTask(t)}>
-                  {linkedTaskIds.has(t.id) ? 'Ya enlazada' : 'Enlazar'}
-                </button>
-              </li>
-            ))}
-          </ul>
+          </section>
         )}
-      </div>
 
-      <div className="toolbar">
-        <label>
-          Efecto:
-          <select value={effectFilter} onChange={(e) => setEffectFilter(e.target.value)}>
-            <option value="">Todos</option>
-            {EFFECT_OPTIONS.map((o) => (
-              <option key={o} value={o}>
-                {o}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Criticidad:
-          <select value={criticalityFilter} onChange={(e) => setCriticalityFilter(e.target.value)}>
-            <option value="">Todas</option>
-            {CRITICALITY_OPTIONS.map((o) => (
-              <option key={o} value={o}>
-                {o}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <table className="linked-table">
-        <thead>
-          <tr>
-            <th>Código</th>
-            <th>Tarea</th>
-            <th>Efecto</th>
-            <th>Criticidad</th>
-            <th></th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {(() => {
-            let lastProcess: string | null = '__unset__';
-            return filteredTasks.map((t) => {
-              const processLabel = t.process_name || 'Sin categorizar';
-              const showHeader = processLabel !== lastProcess;
-              lastProcess = processLabel;
-              return (
-                <Fragment key={t.task_id}>
-                  {showHeader && (
-                    <tr className="process-header-row">
-                      <td colSpan={6}>{processLabel}</td>
+        <nav className="client-tabs" aria-label="Secciones del rol">
+          {ROLE_TABS.map((t) => (
+            <NavLink
+              key={t.key}
+              className="client-tabs__tab"
+              to={`/roles/${encodeURIComponent(selectedKey)}/${t.key}`}
+              aria-current={t.key === activeTab ? 'page' : undefined}
+            >
+              {t.label}
+              {tabCount[t.key] !== null && <span className="client-tabs__count">{tabCount[t.key]}</span>}
+            </NavLink>
+          ))}
+        </nav>
+        {activeTab === 'tareas' && (
+          <>
+            <section className="table-card">
+              <div className="table-card__head">
+                <h2 className="table-card__title">Tareas de este rol · paso 2</h2>
+                <p className="catalog-note">
+                  <strong>{taskSummary.total}</strong> tareas: {taskSummary.readOnly} read only, {taskSummary.reversible}{' '}
+                  reversibles, {taskSummary.irreversible} irreversibles · {taskSummary.core} core, {taskSummary.standard}{' '}
+                  standard, {taskSummary.peripheral} peripheral. Abre una tarea para enlazar sus componentes y
+                  composiciones en el contexto de este rol.
+                </p>
+              </div>
+              <div className="table-card__foot inline-form">
+                <TaskTypeFilters
+                  processId={processFilter}
+                  pattern={patternFilter}
+                  onProcess={setProcessFilter}
+                  onPattern={setPatternFilter}
+                />
+                <label className="inline-field">
+                  Efecto
+                  <select className="text-input" value={effectFilter} onChange={(e) => setEffectFilter(e.target.value)}>
+                    <option value="">Todos</option>
+                    {EFFECT_OPTIONS.map((o) => (
+                      <option key={o} value={o}>
+                        {o}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="inline-field">
+                  Criticidad
+                  <select
+                    className="text-input"
+                    value={criticalityFilter}
+                    onChange={(e) => setCriticalityFilter(e.target.value)}
+                  >
+                    <option value="">Todas</option>
+                    {CRITICALITY_OPTIONS.map((o) => (
+                      <option key={o} value={o}>
+                        {o}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Tarea</th>
+                    <th>Patrón</th>
+                    <th>Efecto</th>
+                    <th>Criticidad</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    let lastProcess: string | null = '__unset__';
+                    return filteredTasks.map((t) => {
+                      const processLabel = t.process_name || 'Sin categorizar';
+                      const showHeader = processLabel !== lastProcess;
+                      lastProcess = processLabel;
+                      return (
+                        <Fragment key={t.task_id}>
+                          {showHeader && (
+                            <tr className="data-table__group">
+                              <td colSpan={5} className="eyebrow">
+                                {processLabel}
+                              </td>
+                            </tr>
+                          )}
+                          <tr>
+                            <td className="data-table__wrap">
+                              <Link
+                                className="data-table__primary"
+                                to={`/tareas/${encodeURIComponent(t.task_id)}/componentes${role ? `?rol=${encodeURIComponent(role.id)}` : ''}`}
+                              >
+                                {t.statement}
+                              </Link>
+                              <span className="data-table__secondary">{t.task_code}</span>
+                            </td>
+                            <td className="mono">{t.primary_pattern ?? '—'}</td>
+                            <td className="mono">{t.effect_classification}</td>
+                            <td className="mono">{t.criticality}</td>
+                            <td className="data-table__actions">
+                              <button type="button" className="btn btn--sm btn--danger" onClick={() => removeTask(t.task_id)}>
+                                Quitar
+                              </button>
+                            </td>
+                          </tr>
+                        </Fragment>
+                      );
+                    });
+                  })()}
+                  {filteredTasks.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="data-table__empty">
+                        {tasks.length === 0
+                          ? 'Este rol no tiene tareas enlazadas todavía.'
+                          : 'Ninguna tarea coincide con estos filtros.'}
+                      </td>
                     </tr>
                   )}
+                </tbody>
+              </table>
+            </section>
+          </>
+        )}
+        {activeTab === 'anadir' && (
+          <>
+            <section className="table-card">
+              <div className="table-card__head">
+                <h2 className="table-card__title">Añadir tareas</h2>
+                <p className="catalog-note">
+                  Enlaza una tarea que ya existe o crea una nueva: nacerá en borrador y enlazada a este rol.
+                </p>
+              </div>
+              <div className="table-card__foot inline-form">
+                <input
+                  className="text-input"
+                  type="search"
+                  aria-label="Buscar tarea para enlazar"
+                  placeholder="Buscar en todo el catálogo por código o texto…"
+                  value={taskSearch}
+                  onChange={(e) => setTaskSearch(e.target.value)}
+                />
+                {role && (
+                  <Link className="btn btn--primary" to={`/tareas/nueva?rol=${encodeURIComponent(role.id)}`}>
+                    + Crear tarea nueva
+                  </Link>
+                )}
+              </div>
+              <table className="data-table">
+                <thead>
                   <tr>
-                    <td className="task-code">{t.task_code}</td>
-                    <td>{t.statement}</td>
-                    <td>
-                      <span className="badge">{t.effect_classification}</span>
-                    </td>
-                    <td>
-                      <span className="badge">{t.criticality}</span>
-                    </td>
-                    <td>
-                      <button className="secondary" onClick={() => openTaskDetail(t)}>
-                        Ver
-                      </button>
-                    </td>
-                    <td>
-                      <button className="remove" onClick={() => removeTask(t.task_id)}>
-                        Quitar
-                      </button>
-                    </td>
+                    <th>{taskSearchResults.length > 0 ? 'Resultados de la búsqueda' : 'Sugeridas para este departamento'}</th>
+                    <th>Proceso</th>
+                    <th />
                   </tr>
-                </Fragment>
-              );
-            });
-          })()}
-          {filteredTasks.length === 0 && (
-            <tr>
-              <td colSpan={6} className="empty">
-                {tasks.length === 0
-                  ? 'Este rol no tiene tareas enlazadas todavía.'
-                  : 'Ninguna tarea coincide con estos filtros.'}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+                </thead>
+                <tbody>
+                  {addableTasks.map((t) => (
+                    <tr key={t.id}>
+                      <td className="data-table__wrap">
+                        <span className="data-table__primary">{t.statement}</span>
+                        <span className="data-table__secondary">{t.task_code}</span>
+                      </td>
+                      <td>{t.process_name || '—'}</td>
+                      <td className="data-table__actions">
+                        <button
+                          type="button"
+                          className="btn btn--sm btn--ghost"
+                          disabled={linkedTaskIds.has(t.id)}
+                          onClick={() => addTask(t)}
+                        >
+                          {linkedTaskIds.has(t.id) ? 'Ya enlazada' : 'Enlazar'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {taskSearchResults.length === 0 && availableTasks.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="data-table__empty">
+                        {!role?.domain_id
+                          ? 'Este rol no tiene departamento asignado: asígnalo para ver tareas sugeridas.'
+                          : 'No hay más tareas categorizadas para este departamento. Usa el buscador.'}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </section>
+          </>
+        )}
+        {activeTab === 'ficha' && role && (
+          <>
+              <section className="table-card">
+                <div className="table-card__head role-sheet__head">
+                  <h2 className="table-card__title">
+                    Ficha · {role.key} · v{role.version}
+                  </h2>
+                  {!editing ? (
+                    <button type="button" className="btn btn--sm btn--ghost" onClick={startEditing}>
+                      Editar
+                    </button>
+                  ) : (
+                    <span>
+                      <button type="button" className="btn btn--sm btn--primary" onClick={saveRole} disabled={saving}>
+                        {saving ? 'Guardando…' : 'Guardar'}
+                      </button>{' '}
+                      <button type="button" className="btn btn--sm btn--ghost" onClick={() => setEditing(false)}>
+                        Cancelar
+                      </button>
+                    </span>
+                  )}
+                </div>
 
-      <h3>Tareas disponibles en este departamento</h3>
-      <table className="linked-table">
-        <thead>
-          <tr>
-            <th>Código</th>
-            <th>Tarea</th>
-            <th>Proceso</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {availableTasks.map((t) => (
-            <tr key={t.id}>
-              <td className="task-code">{t.task_code}</td>
-              <td>{t.statement}</td>
-              <td>{t.process_name || '—'}</td>
-              <td>
-                <button onClick={() => addTask(t)}>Agregar</button>
-              </td>
-            </tr>
-          ))}
-          {availableTasks.length === 0 && (
-            <tr>
-              <td colSpan={4} className="empty">
-                {!role?.domain_id
-                  ? 'Este rol no tiene departamento asignado — asígnalo para ver tareas sugeridas.'
-                  : 'No hay más tareas categorizadas para este departamento todavía.'}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+                {!editing || !form ? (
+                  <dl className="fields-grid">
+                    <div>
+                      <dt>Departamento</dt>
+                      <dd>{domainName(role.domain_id)}</dd>
+                    </div>
+                    <div>
+                      <dt>Familia</dt>
+                      <dd>{role.family || '—'}</dd>
+                    </div>
+                    <div>
+                      <dt>Seniority</dt>
+                      <dd>{role.seniority || '—'}</dd>
+                    </div>
+                    <div>
+                      <dt>Riesgo</dt>
+                      <dd>{role.risk_level}</dd>
+                    </div>
+                    <div>
+                      <dt>Model tier</dt>
+                      <dd>{role.model_tier || '—'}</dd>
+                    </div>
+                    <div>
+                      <dt>Consulta memoria antes de producir</dt>
+                      <dd>{role.consults_memory_before_producing ? 'Sí' : 'No'}</dd>
+                    </div>
+                    <div className="fields-grid__wide">
+                      <dt>Misión</dt>
+                      <dd>{role.mission || '—'}</dd>
+                    </div>
+                    <div className="fields-grid__wide">
+                      <dt>Alcance de autonomía</dt>
+                      <dd>{role.autonomy_scope}</dd>
+                    </div>
+                    <div className="fields-grid__wide">
+                      <dt>Requiere aprobación en</dt>
+                      <dd>{role.requires_approval_scope}</dd>
+                    </div>
+                    <div className="fields-grid__wide">
+                      <dt>Nunca hace</dt>
+                      <dd>{role.never_does}</dd>
+                    </div>
+                  </dl>
+                ) : (
+                  <div className="fields-grid">
+                    <label className="inline-field">
+                      Nombre
+                      <input className="text-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                    </label>
+                    <label className="inline-field">
+                      Departamento
+                      <select
+                        className="text-input"
+                        value={form.domain_id || ''}
+                        onChange={(e) => setForm({ ...form, domain_id: e.target.value || null })}
+                      >
+                        <option value="">—</option>
+                        {domains.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="inline-field">
+                      Familia
+                      <input
+                        className="text-input"
+                        value={form.family || ''}
+                        onChange={(e) => setForm({ ...form, family: e.target.value || null })}
+                      />
+                    </label>
+                    <label className="inline-field">
+                      Seniority
+                      <select
+                        className="text-input"
+                        value={form.seniority || ''}
+                        onChange={(e) => setForm({ ...form, seniority: (e.target.value || null) as Seniority | null })}
+                      >
+                        <option value="">—</option>
+                        {SENIORITY_OPTIONS.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="inline-field">
+                      Riesgo
+                      <select
+                        className="text-input"
+                        value={form.risk_level}
+                        onChange={(e) => setForm({ ...form, risk_level: e.target.value as RiskLevel })}
+                      >
+                        {RISK_OPTIONS.map((r) => (
+                          <option key={r} value={r}>
+                            {r}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="inline-field">
+                      Model tier
+                      <input
+                        className="text-input"
+                        value={form.model_tier || ''}
+                        onChange={(e) => setForm({ ...form, model_tier: e.target.value || null })}
+                      />
+                    </label>
+                    <label className="inline-field">
+                      Estado
+                      <select
+                        className="text-input"
+                        value={form.status}
+                        onChange={(e) => setForm({ ...form, status: e.target.value as JobRoleFull['status'] })}
+                      >
+                        {STATUS_OPTIONS.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="check-field">
+                      <input
+                        type="checkbox"
+                        checked={form.consults_memory_before_producing}
+                        onChange={(e) => setForm({ ...form, consults_memory_before_producing: e.target.checked })}
+                      />
+                      Consulta memoria antes de producir
+                    </label>
+                    <label className="inline-field fields-grid__wide">
+                      Misión
+                      <textarea
+                        className="text-input"
+                        value={form.mission || ''}
+                        onChange={(e) => setForm({ ...form, mission: e.target.value || null })}
+                      />
+                    </label>
+                    <label className="inline-field fields-grid__wide">
+                      Alcance de autonomía
+                      <textarea
+                        className="text-input"
+                        value={form.autonomy_scope}
+                        onChange={(e) => setForm({ ...form, autonomy_scope: e.target.value })}
+                      />
+                    </label>
+                    <label className="inline-field fields-grid__wide">
+                      Requiere aprobación en
+                      <textarea
+                        className="text-input"
+                        value={form.requires_approval_scope}
+                        onChange={(e) => setForm({ ...form, requires_approval_scope: e.target.value })}
+                      />
+                    </label>
+                    <label className="inline-field fields-grid__wide">
+                      Nunca hace
+                      <textarea
+                        className="text-input"
+                        value={form.never_does}
+                        onChange={(e) => setForm({ ...form, never_does: e.target.value })}
+                      />
+                    </label>
+                  </div>
+                )}
+              </section>
+          </>
+        )}
+        {activeTab === 'clientes' && (
+          <>
+            <section className="table-card">
+              <div className="table-card__head">
+                <h2 className="table-card__title">Clientes con este rol</h2>
+              </div>
+              <div className="table-card__foot inline-form">
+                <label className="inline-field">
+                  Versión
+                  <select
+                    className="text-input"
+                    value={tenantVersionFilter}
+                    onChange={(e) => setTenantVersionFilter(e.target.value)}
+                  >
+                    <option value="">Todas</option>
+                    {versions.map((v) => (
+                      <option key={v.id} value={v.version}>
+                        v{v.version}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="inline-field">
+                  Estado
+                  <select
+                    className="text-input"
+                    value={tenantStatusFilter}
+                    onChange={(e) => setTenantStatusFilter(e.target.value)}
+                  >
+                    <option value="">Todos</option>
+                    {TENANT_STATUS_OPTIONS.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Cliente</th>
+                    <th>Versión contratada</th>
+                    <th>Estado</th>
+                    <th>Contratado el</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTenants.map((t) => (
+                    <tr key={t.tenant_id}>
+                      <td>
+                        <Link className="data-table__primary" to={`/clientes/${encodeURIComponent(t.tenant_id)}`}>
+                          {t.tenant_name}
+                        </Link>
+                      </td>
+                      <td className="mono">
+                        v{t.job_role_version}
+                        {role && t.job_role_version !== role.version && <span className="pill">otra versión</span>}
+                      </td>
+                      <td className="mono">{t.status}</td>
+                      <td className="mono">{new Date(t.contracted_at).toLocaleDateString()}</td>
+                      <td className="data-table__actions">
+                        <button type="button" className="btn btn--sm btn--ghost" onClick={() => editTenantVersion(t)}>
+                          Editar esa versión
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredTenants.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="data-table__empty">
+                        {tenants.length === 0
+                          ? 'Ningún cliente tiene este rol contratado todavía.'
+                          : 'Ningún cliente coincide con estos filtros.'}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </section>
+          </>
+        )}
+      </div>
+    </section>
   );
 }

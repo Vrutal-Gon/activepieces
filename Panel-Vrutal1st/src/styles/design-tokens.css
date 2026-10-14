@@ -67,3 +67,13 @@
 
   color-scheme: dark;
 }
+
+/* Plataforma = taller: negro teñido de violeta y retícula, para no confundirlo nunca con Operación */
+[data-workspace='plataforma'] {
+  --bg-app: color-mix(in srgb, var(--color-violet) 7%, var(--color-black));
+  --bg-surface: color-mix(in srgb, var(--color-bone) 4%, var(--bg-app));
+  --bg-surface-raised: color-mix(in srgb, var(--color-bone) 8%, var(--bg-app));
+  --bg-overlay: color-mix(in srgb, var(--bg-app) 88%, transparent);
+  --border-subtle: color-mix(in srgb, color-mix(in srgb, var(--color-violet) 40%, var(--color-bone)) 14%, transparent);
+  --workspace-grid: radial-gradient(color-mix(in srgb, var(--color-bone) 6%, transparent) 1px, transparent 1px) 0 0 / 20px 20px;
+}

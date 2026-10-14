@@ -8,6 +8,17 @@ import {
 import { errorMessage } from '../../lib/api/client';
 import { useAsyncData } from '../../lib/hooks/useAsyncData';
 import { ErrorNotice, LoadingState } from '../../components/StatusViews';
+import type { TenantStackChoice } from '../../lib/types';
+
+/** Qué enseña Vrutal1st del lado de VrutalOS: solo lectura, nunca la clave en sí. */
+function describeConfig(s: TenantStackChoice): { label: string; tone: 'ok' | 'warn' | 'bad' | 'pending' } | null {
+  if (!s.provider_key) return null; // solo informativo, no hay nada que configurar en VrutalOS
+  if (!s.integration_status) return { label: 'No configurada todavía', tone: 'pending' };
+  if (s.integration_last_error) return { label: `Error: ${s.integration_last_error}`, tone: 'bad' };
+  if (s.integration_status === 'revoked') return { label: 'Revocada', tone: 'bad' };
+  if (s.integration_status === 'paused') return { label: 'En pausa', tone: 'warn' };
+  return { label: 'Configurada y validada', tone: 'ok' };
+}
 
 export function StackTab({ tenantId }: { tenantId: string }) {
   const load = useCallback(
@@ -55,8 +66,9 @@ export function StackTab({ tenantId }: { tenantId: string }) {
   return (
     <>
       <p className="client__summary">
-        Qué sistema usa el cliente en cada categoría. Determina qué componente se despliega en cada tarea de sus
-        especialistas. Si su sistema no aparece, añádelo antes en <strong>Stack / Sistemas</strong>.
+        Qué sistemas usa el cliente, por categoría — una categoría puede tener varios (p. ej. varios proveedores de
+        LLM a la vez, no uno excluyente). Determina qué componente se despliega en cada tarea de sus especialistas.
+        Si su sistema no aparece, añádelo antes en <strong>Stack / Sistemas</strong>.
       </p>
 
       <div className="table-card">
@@ -65,34 +77,41 @@ export function StackTab({ tenantId }: { tenantId: string }) {
             <tr>
               <th>Categoría</th>
               <th>Sistema</th>
+              <th>Configuración en VrutalOS</th>
               <th>
                 <span className="visually-hidden">Acciones</span>
               </th>
             </tr>
           </thead>
           <tbody>
-            {stack.map((s) => (
-              <tr key={s.system_category}>
+            {stack.map((s) => {
+              const config = describeConfig(s);
+              return (
+              <tr key={s.system_option_id}>
                 <td className="eyebrow">{s.system_category}</td>
                 <td>
                   <span className="data-table__primary">{s.system_name}</span>
                   {s.version && <span className="data-table__secondary">{s.version}</span>}
+                </td>
+                <td>
+                  {config ? <span className={`pill pill--${config.tone}`}>{config.label}</span> : <span className="muted small">—</span>}
                 </td>
                 <td className="data-table__actions">
                   <button
                     type="button"
                     className="btn btn--ghost btn--sm"
                     disabled={saving}
-                    onClick={() => run(() => removeTenantStackChoice(tenantId, s.system_category))}
+                    onClick={() => run(() => removeTenantStackChoice(tenantId, s.system_option_id))}
                   >
                     Quitar
                   </button>
                 </td>
               </tr>
-            ))}
+              );
+            })}
             {stack.length === 0 && (
               <tr>
-                <td colSpan={3} className="data-table__empty">
+                <td colSpan={4} className="data-table__empty">
                   Sin stack definido todavía.
                 </td>
               </tr>

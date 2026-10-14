@@ -1,0 +1,416 @@
+/* Pantallas de Plataforma (catálogo): roles, tareas, bloques, composiciones, referencias. */
+
+.catalog-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.catalog-stack > .table-card {
+  margin-bottom: 0;
+}
+
+.catalog-note {
+  margin: 0;
+  max-width: 48rem;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.catalog-note strong {
+  color: var(--text-primary);
+}
+
+/* Formularios en línea al pie de una tabla o tarjeta */
+.inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.inline-form > .text-input {
+  width: auto;
+  min-width: 12rem;
+  flex: 1 1 12rem;
+}
+
+.check-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  font-size: var(--text-sm);
+}
+
+.data-table .text-input {
+  min-height: auto;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.btn--danger {
+  background: transparent;
+  border-color: var(--danger-border);
+  color: var(--danger);
+}
+
+.btn--danger:hover:not([disabled]) {
+  background: var(--danger-subtle);
+}
+
+.data-table__actions .btn + .btn {
+  margin-left: var(--space-2);
+}
+
+.data-table tr[aria-selected='true'] td {
+  background: var(--action-subtle);
+}
+
+/* Resultado de comprobar una composición */
+.issue-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  list-style: none;
+  font-size: var(--text-sm);
+}
+
+.data-table__row--clickable {
+  cursor: pointer;
+}
+
+.data-table__row--clickable:hover {
+  background: var(--bg-surface);
+}
+
+/* Explicaciones largas, plegables */
+.catalog-help {
+  max-width: 48rem;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.catalog-help summary {
+  color: var(--action-text);
+  cursor: pointer;
+}
+
+.catalog-help p {
+  margin: var(--space-2) 0 0;
+}
+
+/* Cabecera de la ficha de tarea */
+.task-code {
+  font-family: var(--font-mono);
+  color: var(--action-text);
+}
+
+/* Ficha de campos (lectura y edición) */
+.role-sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.fields-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: var(--space-4) var(--space-6);
+  margin: 0;
+  padding: var(--space-4);
+}
+
+.fields-grid__wide {
+  grid-column: 1 / -1;
+}
+
+.fields-grid dt {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.fields-grid dd {
+  margin: var(--space-1) 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.fields-grid textarea.text-input {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+/* Organigrama de roles */
+.org__tiers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-4);
+}
+
+.org__tier {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-left: var(--space-4);
+  border-left: 2px solid var(--border-subtle);
+}
+
+.org__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13.75rem, 1fr));
+  gap: var(--space-3);
+}
+
+.org__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: inherit;
+  text-decoration: none;
+}
+
+.org__card:hover {
+  border-color: var(--action);
+}
+
+.org__name {
+  font-weight: 500;
+}
+
+.org__key {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--action-text);
+}
+
+/* Resumen del rol bajo el título: lo esencial sin abrir la pestaña Ficha */
+.role-summary__mission {
+  display: -webkit-box;
+  margin-top: var(--space-1);
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+/* Tablas del catálogo más densas: menos scroll en listas largas */
+.catalog-stack .data-table th,
+.catalog-stack .data-table td {
+  padding-block: var(--space-2);
+}
+
+.catalog-stack .table-card__head,
+.catalog-stack .table-card__foot {
+  padding-block: var(--space-3);
+}
+
+.catalog-stack > .client-tabs {
+  margin-bottom: 0;
+}
+
+/* Asistentes de creación: pasos numerados */
+.wizard {
+  max-width: 48rem;
+}
+
+.wizard__step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-4);
+  margin: 0;
+  padding: var(--space-4);
+}
+
+.wizard__legend {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-2);
+  font-weight: 600;
+}
+
+.wizard__wide {
+  flex: 1 1 100%;
+}
+
+.wizard__wide textarea.text-input {
+  width: 100%;
+  max-width: none;
+  min-height: 4.5rem;
+  resize: vertical;
+}
+
+.wizard__hint {
+  flex: 1 1 100%;
+}
+
+.wizard__checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-5);
+  flex: 1 1 100%;
+}
+
+/* Composición como secuencia lineal de pasos (nunca ramas) */
+.pipeline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4);
+  list-style: none;
+  counter-reset: none;
+}
+
+.pipeline__step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 11rem;
+  max-width: 18rem;
+  padding: var(--space-3);
+  background: var(--bg-surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-top: 2px solid var(--action);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+}
+
+.pipeline__step + .pipeline__step::before {
+  content: '→';
+  position: absolute;
+  left: calc(-1 * var(--space-3));
+  top: var(--space-3);
+  width: var(--space-3);
+  text-align: center;
+  color: var(--action-text);
+}
+
+.pipeline__verb {
+  font-weight: 600;
+}
+
+.pipeline__line {
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.pipeline__options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pipeline__options a {
+  color: var(--text-primary);
+}
+
+.pipeline__contract {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--action-text);
+}
+
+.pipeline__remove {
+  margin-left: var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.pipeline__empty {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.pipeline--example {
+  padding: var(--space-2) 0;
+}
+
+.pipeline--example .pipeline__step {
+  min-width: 9rem;
+}
+
+.inline-field .cond-input {
+  min-width: 6rem;
+  width: 7rem;
+}
+
+.kind-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kind-list strong {
+  color: var(--text-primary);
+}
+
+.inline-field textarea.schema-input {
+  width: 100%;
+  max-width: none;
+  min-height: 8rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+/* Checklist de alta: pasos en orden, el siguiente resaltado */
+.checklist {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checklist__step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.checklist__step:last-child {
+  border-bottom: 0;
+}
+
+.checklist__step[data-state='todo'] {
+  opacity: 0.55;
+}
+
+.checklist__step[data-state='next'] {
+  background: var(--action-subtle);
+}
+
+.checklist__step[data-state='done'] .side-nav__step {
+  background: var(--active-subtle);
+  border-color: var(--active-signal);
+  color: var(--active-signal);
+}
+
+.checklist__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.checklist__form {
+  margin-top: var(--space-2);
+}

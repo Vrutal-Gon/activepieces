@@ -2,8 +2,10 @@ import { useCallback, useState, type FormEvent } from 'react';
 import { inviteStaff, listPlatformRoles, listStaff } from '../lib/api/staff';
 import { errorMessage } from '../lib/api/client';
 import { useAsyncData } from '../lib/hooks/useAsyncData';
+import { PageHead } from '../components/PageHead';
 import { ErrorNotice, LoadingState } from '../components/StatusViews';
 import type { PlatformRole } from '../lib/types';
+import '../styles/pages/catalog.css';
 
 export function StaffTeam() {
   const loadStaff = useCallback((signal: AbortSignal) => listStaff(signal), []);
@@ -15,46 +17,54 @@ export function StaffTeam() {
     roles.state.status === 'ready' ? (roles.state.data.find((r) => r.key === key)?.name ?? key) : key;
 
   return (
-    <div className="panel">
-      <header className="page-header">
-        <span className="eyebrow">Administración</span>
-        <h1 className="page-header__title">Equipo Vrutal</h1>
-      </header>
+    <section className="catalog-stack">
+      <PageHead crumbs={[{ label: 'Administración' }]} title="Equipo Vrutal" />
 
       {roles.state.status === 'loading' && <LoadingState />}
       {roles.state.status === 'error' && <ErrorNotice error={roles.state.error} onRetry={roles.reload} />}
       {roles.state.status === 'ready' && <InviteForm roles={roles.state.data} onInvited={staff.reload} />}
 
-      <h3>Miembros</h3>
       {staff.state.status === 'loading' && <LoadingState />}
       {staff.state.status === 'error' && <ErrorNotice error={staff.state.error} onRetry={staff.reload} />}
       {staff.state.status === 'ready' && (
-        <table className="linked-table">
-          <thead>
-            <tr>
-              <th>Nombre</th>
-              <th>Correo</th>
-              <th>Rol</th>
-              <th>Estado</th>
-              <th>Último acceso</th>
-            </tr>
-          </thead>
-          <tbody>
-            {staff.state.data.map((m) => (
-              <tr key={m.profile_id}>
-                <td>{m.full_name || '—'}</td>
-                <td>{m.email}</td>
-                <td>{m.role_keys.map(roleName).join(' · ')}</td>
-                <td>
-                  <span className="badge">{m.last_sign_in_at ? m.status : 'invitado'}</span>
-                </td>
-                <td>{m.last_sign_in_at ? new Date(m.last_sign_in_at).toLocaleString() : 'nunca'}</td>
+        <section className="table-card">
+          <div className="table-card__head">
+            <h2 className="table-card__title">Miembros</h2>
+          </div>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Persona</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th>Último acceso</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {staff.state.data.map((m) => (
+                <tr key={m.profile_id}>
+                  <td>
+                    <span className="data-table__primary">{m.full_name || '—'}</span>
+                    <span className="data-table__secondary">{m.email}</span>
+                  </td>
+                  <td>{m.role_keys.map(roleName).join(' · ')}</td>
+                  <td>
+                    {m.last_sign_in_at ? (
+                      <span className={`pill ${m.status === 'active' ? 'pill--ok' : ''}`}>{m.status}</span>
+                    ) : (
+                      <span className="pill pill--pending">invitado</span>
+                    )}
+                  </td>
+                  <td className="mono">
+                    {m.last_sign_in_at ? new Date(m.last_sign_in_at).toLocaleString() : 'nunca'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -93,25 +103,38 @@ function InviteForm({ roles, onInvited }: InviteFormProps) {
   }
 
   return (
-    <form className="role-card" onSubmit={handleSubmit}>
-      <div className="role-card-header">
-        <h2>Invitar a una persona</h2>
+    <form className="table-card" onSubmit={handleSubmit}>
+      <div className="table-card__head">
+        <h2 className="table-card__title">Invitar a una persona</h2>
+        <p className="catalog-note">
+          Recibirá un correo para crear su contraseña. No hay registro público: solo entra quien invitas aquí.
+        </p>
       </div>
-      <p className="task-summary">
-        Recibirá un correo para crear su contraseña. No hay registro público: solo entra quien invitas aquí.
-      </p>
-      <div className="role-fields-edit">
-        <label>
+      <div className="fields-grid">
+        <label className="inline-field">
           Nombre completo
-          <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} required maxLength={120} />
+          <input
+            className="text-input"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            required
+            maxLength={120}
+          />
         </label>
-        <label>
+        <label className="inline-field">
           Correo
-          <input type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input
+            className="text-input"
+            type="email"
+            autoComplete="off"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
         </label>
-        <label className="full-width">
+        <label className="inline-field">
           Rol
-          <select value={roleKey} onChange={(e) => setRoleKey(e.target.value)} required>
+          <select className="text-input" value={roleKey} onChange={(e) => setRoleKey(e.target.value)} required>
             <option value="">— elegir —</option>
             {roles.map((r) => (
               <option key={r.key} value={r.key}>
@@ -120,21 +143,27 @@ function InviteForm({ roles, onInvited }: InviteFormProps) {
             ))}
           </select>
         </label>
+        {selectedRole && (
+          <p className="catalog-note fields-grid__wide">
+            Puede: {selectedRole.permission_keys.length > 0 ? selectedRole.permission_keys.join(', ') : 'nada todavía'}
+          </p>
+        )}
+        {error !== null && (
+          <p className="notice notice--error fields-grid__wide" role="alert">
+            {errorMessage(error)}
+          </p>
+        )}
+        {sentTo && (
+          <p className="notice notice--info fields-grid__wide" role="status">
+            Invitación enviada a <strong>{sentTo}</strong>.
+          </p>
+        )}
       </div>
-      {selectedRole && (
-        <p className="task-summary">
-          Puede: {selectedRole.permission_keys.length > 0 ? selectedRole.permission_keys.join(', ') : 'nada todavía'}
-        </p>
-      )}
-      {error !== null && <p className="error">{errorMessage(error)}</p>}
-      {sentTo && (
-        <p className="task-summary" role="status">
-          Invitación enviada a <strong>{sentTo}</strong>.
-        </p>
-      )}
-      <button type="submit" className="btn btn--primary" disabled={submitting}>
-        {submitting ? 'Enviando…' : 'Enviar invitación'}
-      </button>
+      <div className="table-card__foot">
+        <button type="submit" className="btn btn--primary" disabled={submitting}>
+          {submitting ? 'Enviando…' : 'Enviar invitación'}
+        </button>
+      </div>
     </form>
   );
 }

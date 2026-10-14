@@ -16,6 +16,7 @@ import { ReportingTab } from './client/ReportingTab';
 import { StackTab } from './client/StackTab';
 import { InfraTab } from './client/InfraTab';
 import { InfoTab } from './client/InfoTab';
+import { TicketsTab } from './client/TicketsTab';
 import '../styles/pages/client.css';
 
 const TABS = [
@@ -49,14 +50,13 @@ const PENDING_TABS: Partial<Record<TabKey, { title: string; source: string }>> =
     title: 'Consumo de modelos',
     source: 'model_usage vive en la base del cliente. Llegará con el resumen diario que enviará cada VPS en su latido.',
   },
-  tickets: {
-    title: 'Tickets del cliente',
-    source: 'client_ticket vive en la base del cliente. Se leerán vía Edge Function; los tickets nuevos generarán notificación.',
-  },
   logs: {
     title: 'Logs de ejecución',
     source: 'run_log vive en la base del cliente. Se consultarán con filtros vía Edge Function.',
   },
+  // tickets: construido (023_vrutal_support_tickets.sql, TicketsTab) — ya no vive en la base del
+  // cliente. Decisión 2026-10-08: un ticket es una conversación con Vrutal, no un dato de negocio
+  // del cliente, no aplica el aislamiento por instancia de esta lista.
   auditoria: {
     title: 'Auditoría',
     source:
@@ -222,11 +222,20 @@ export function ClientPanel({ tenantId, tab, onOpenRole }: ClientPanelProps) {
 
       <section className="client__panel">
         {tab === 'resumen' && <OverviewTab tenant={tenant} specialists={specialists} />}
-        {tab === 'especialistas' && <SpecialistsTab specialists={specialists} onOpenRole={onOpenRole} />}
+        {tab === 'especialistas' && (
+          <SpecialistsTab
+            tenantId={tenant.id}
+            specialists={specialists}
+            canEdit={tenant.can_edit}
+            onOpenRole={onOpenRole}
+            onContracted={refresh}
+          />
+        )}
         {tab === 'flujos' && <FlowsTab tenantId={tenant.id} specialists={specialists} />}
         {tab === 'kpis' && <ReportingTab tenantId={tenant.id} />}
         {tab === 'stack' && <StackTab tenantId={tenant.id} />}
         {tab === 'infraestructura' && <InfraTab tenant={tenant} />}
+        {tab === 'tickets' && <TicketsTab tenantId={tenant.id} canEdit={tenant.can_edit} />}
         {tab === 'info' && <InfoTab tenant={tenant} onSaved={refresh} />}
         {pending && <PendingPanel title={pending.title} source={pending.source} />}
       </section>
