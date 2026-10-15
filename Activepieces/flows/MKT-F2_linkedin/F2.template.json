@@ -16,7 +16,8 @@
   "pieces": [
     "@activepieces/piece-google-sheets",
     "@activepieces/piece-webhook",
-    "@activepieces/piece-http"
+    "@activepieces/piece-http",
+    "@activepieces/piece-approval"
   ],
   "flows": [
     {
@@ -95,16 +96,14 @@
             },
             "nextAction": {
               "name": "step_3",
-              "valid": false,
-              "skip": false,
-              "displayName": "Pide permiso · founder: texto + fecha",
-              "type": "CODE",
+              "type": "PIECE",
+              "displayName": "Pide permiso · 1/6 · generar el enlace de reanudación",
               "settings": {
+                "pieceName": "@activepieces/piece-approval",
+                "pieceVersion": "0.1.28",
+                "actionName": "create_approval_links",
+                "propertySettings": {},
                 "input": {},
-                "sourceCode": {
-                  "code": "/* vrutal-block { \"block\": \"Pide permiso · founder: texto + fecha\", \"kind\": \"approve\", \"pending\": true } */\n// PASO PENDIENTE DE CONFIGURAR. Falla a proposito (fail-closed): hasta que lo sustituyas, el flujo no actua.\n// Que hay que poner aqui: Enviar al founder texto + fecha y esperar su respuesta; si no aprueba, el flujo termina aquí. El piece «Approval» es legacy en 0.82: usar las acciones de la pestaña Approvals si existen. Fail-closed: sin respuesta, no sigue.\nexport const code = async (_inputs: Record<string, never>) => {\n  throw new Error('PENDIENTE DE CONFIGURAR · Pide permiso · founder: texto + fecha: Enviar al founder texto + fecha y esperar su respuesta; si no aprueba, el flujo termina aquí');\n};\n",
-                  "packageJson": "{}"
-                },
                 "errorHandlingOptions": {
                   "retryOnFailure": {
                     "value": false
@@ -115,31 +114,16 @@
                 }
               },
               "nextAction": {
-                "name": "step_4",
-                "valid": false,
-                "skip": false,
-                "displayName": "Consulta · clave de Postiz (Vault)",
-                "type": "PIECE",
+                "name": "step_7",
+                "type": "CODE",
+                "displayName": "Pide permiso · 2/6 · limpiar el enlace (quitar /confirm)",
                 "settings": {
-                  "pieceName": "@activepieces/piece-http",
-                  "pieceVersion": "0.11.19",
-                  "actionName": "send_request",
-                  "propertySettings": {},
                   "input": {
-                    "method": "POST",
-                    "url": "https://rgauumxztblwurzebmsa.supabase.co/functions/v1/integration-get-key",
-                    "headers": {
-                      "Content-Type": "application/json",
-                      "X-AP-Token": "PENDIENTE_GENERAR_SECRETO_AP_INTEGRATION_TOKEN"
-                    },
-                    "queryParams": {},
-                    "authType": "NONE",
-                    "body_type": "json",
-                    "body": {
-                      "provider": "postiz"
-                    },
-                    "response_is_binary": false,
-                    "followRedirects": true
+                    "link": "{{step_3.approvalLink}}"
+                  },
+                  "sourceCode": {
+                    "code": "/* vrutal-block { \"block\": \"Pide permiso · founder: texto + fecha\", \"kind\": \"approve\", \"part\": \"2/6\" } */\n// create_approval_links devuelve `resumeUrl + \"/confirm\"`, y esa ruta da 404 en Activepieces\n// 0.82 (comprobado contra el servidor el 2026-10-14: la base y /sync dan 400, /confirm da 404\n// igual que un sufijo inventado). Si se guardara tal cual, approval-decide dispararia una URL\n// muerta y el flujo NO se reanudaria nunca, en silencio.\nexport const code = async (inputs: { link: string }) => {\n  const url = String(inputs.link ?? '').replace(//confirm$/, '');\n  if (!url) throw new Error('create_approval_links no devolvio ningun enlace.');\n  return { resumeUrl: url };\n};\n",
+                    "packageJson": "{}"
                   },
                   "errorHandlingOptions": {
                     "retryOnFailure": {
@@ -151,11 +135,9 @@
                   }
                 },
                 "nextAction": {
-                  "name": "step_5",
-                  "valid": false,
-                  "skip": false,
-                  "displayName": "Ejecuta · Postiz: crear post programado",
+                  "name": "step_8",
                   "type": "PIECE",
+                  "displayName": "Pide permiso · 3/6 · crear la aprobación en VrutalOS",
                   "settings": {
                     "pieceName": "@activepieces/piece-http",
                     "pieceVersion": "0.11.19",
@@ -163,34 +145,22 @@
                     "propertySettings": {},
                     "input": {
                       "method": "POST",
-                      "url": "PENDIENTE_URL_POSTIZ/public/v1/posts",
+                      "url": "https://rgauumxztblwurzebmsa.supabase.co/functions/v1/approval-create",
                       "headers": {
                         "Content-Type": "application/json",
-                        "Authorization": "{{step_4.body.key}}"
+                        "X-AP-Token": "PENDIENTE_GENERAR_SECRETO_AP_INTEGRATION_TOKEN"
                       },
                       "queryParams": {},
                       "authType": "NONE",
                       "body_type": "json",
                       "body": {
-                        "type": "schedule",
-                        "shortLink": false,
-                        "date": "{{step_2.rows[0].publish_at}}",
-                        "tags": [],
-                        "posts": [
-                          {
-                            "integration": {
-                              "id": "PENDIENTE_INTEGRATION_ID_LINKEDIN"
-                            },
-                            "value": [
-                              {
-                                "content": "{{step_2.rows[0].body}}"
-                              }
-                            ],
-                            "settings": {
-                              "__type": "linkedin-page"
-                            }
-                          }
-                        ]
+                        "job_role_key": "content_promotion",
+                        "task_key": "VRL-MKT-C03",
+                        "payload": {
+                          "body": "{{step_2.rows[0].body}}",
+                          "publish_at": "{{step_2.rows[0].publish_at}}"
+                        },
+                        "resume_url": "{{step_7.resumeUrl}}"
                       },
                       "response_is_binary": false,
                       "followRedirects": true
@@ -205,73 +175,242 @@
                     }
                   },
                   "nextAction": {
-                    "name": "step_6",
-                    "valid": false,
-                    "skip": false,
-                    "displayName": "Deja rastro",
+                    "name": "step_9",
                     "type": "PIECE",
+                    "displayName": "Pide permiso · 4/6 · esperar la decisión (pausa)",
                     "settings": {
-                      "pieceName": "@activepieces/piece-google-sheets",
-                      "pieceVersion": "0.16.4",
-                      "actionName": "insert_row",
-                      "propertySettings": {
-                        "values": {
-                          "type": "MANUAL",
-                          "schema": {
-                            "A": {
-                              "type": "SHORT_TEXT",
-                              "required": false,
-                              "displayName": "fecha",
-                              "defaultValue": ""
-                            },
-                            "B": {
-                              "type": "SHORT_TEXT",
-                              "required": false,
-                              "displayName": "flujo",
-                              "defaultValue": ""
-                            },
-                            "C": {
-                              "type": "SHORT_TEXT",
-                              "required": false,
-                              "displayName": "tarea",
-                              "defaultValue": ""
-                            },
-                            "D": {
-                              "type": "SHORT_TEXT",
-                              "required": false,
-                              "displayName": "resultado",
-                              "defaultValue": ""
-                            },
-                            "E": {
-                              "type": "SHORT_TEXT",
-                              "required": false,
-                              "displayName": "detalle",
-                              "defaultValue": ""
-                            }
-                          }
-                        }
-                      },
-                      "input": {
-                        "auth": "{{connections['HirdYf0okm7HontbOX9RE']}}",
-                        "includeTeamDrives": false,
-                        "spreadsheetId": "1QILqdaxNUUYoHUyLsoDgHe45QP_LgGKPnwFhdKmM4BQ",
-                        "sheetId": 1870392726,
-                        "first_row_headers": true,
-                        "as_string": false,
-                        "values": {
-                          "A": "{{step_2.ran_at}}",
-                          "B": "MKT-F2 Programar el post de LinkedIn",
-                          "C": "VRL-MKT-C03",
-                          "D": "ok",
-                          "E": "{{step_2.count}} registros, {{step_2.discarded}} descartados"
-                        }
-                      },
+                      "pieceName": "@activepieces/piece-approval",
+                      "pieceVersion": "0.1.28",
+                      "actionName": "wait_for_approval",
+                      "propertySettings": {},
+                      "input": {},
                       "errorHandlingOptions": {
                         "retryOnFailure": {
                           "value": false
                         },
                         "continueOnFailure": {
                           "value": false
+                        }
+                      }
+                    },
+                    "nextAction": {
+                      "name": "step_10",
+                      "type": "PIECE",
+                      "displayName": "Pide permiso · 5/6 · preguntar qué se decidió",
+                      "settings": {
+                        "pieceName": "@activepieces/piece-http",
+                        "pieceVersion": "0.11.19",
+                        "actionName": "send_request",
+                        "propertySettings": {},
+                        "input": {
+                          "method": "POST",
+                          "url": "https://rgauumxztblwurzebmsa.supabase.co/functions/v1/approval-result",
+                          "headers": {
+                            "Content-Type": "application/json",
+                            "X-AP-Token": "PENDIENTE_GENERAR_SECRETO_AP_INTEGRATION_TOKEN"
+                          },
+                          "queryParams": {},
+                          "authType": "NONE",
+                          "body_type": "json",
+                          "body": {
+                            "approval_id": "{{step_8.body.approval_id}}"
+                          },
+                          "response_is_binary": false,
+                          "followRedirects": true
+                        },
+                        "errorHandlingOptions": {
+                          "retryOnFailure": {
+                            "value": false
+                          },
+                          "continueOnFailure": {
+                            "value": false
+                          }
+                        }
+                      },
+                      "nextAction": {
+                        "name": "step_11",
+                        "type": "CODE",
+                        "displayName": "Pide permiso · 6/6 · si no aprueba, termina aquí",
+                        "settings": {
+                          "input": {
+                            "approved": "{{step_10.body.approved}}"
+                          },
+                          "sourceCode": {
+                            "code": "/* vrutal-block { \"block\": \"Pide permiso · founder: texto + fecha\", \"kind\": \"approve\", \"part\": \"6/6\" } */\n// El enlace de reanudacion es un GET sin cuerpo, asi que al despertar el flujo no sabe que se\n// decidio: se lo pregunta a approval-result (paso 5/6). NO se lee `approved` de la pieza\n// legacy: approval-decide llama al enlace tal cual, sin ?action=, y la pieza daria false\n// siempre. Fail-closed: cualquier cosa que no sea una aprobacion explicita para el flujo.\nexport const code = async (inputs: { approved: string }) => {\n  if (String(inputs.approved) !== 'true') {\n    throw new Error('Sin aprobacion del founder: el flujo termina aqui (fail-closed).');\n  }\n  return { approved: true };\n};\n",
+                            "packageJson": "{}"
+                          },
+                          "errorHandlingOptions": {
+                            "retryOnFailure": {
+                              "value": false
+                            },
+                            "continueOnFailure": {
+                              "value": false
+                            }
+                          }
+                        },
+                        "nextAction": {
+                          "name": "step_4",
+                          "valid": false,
+                          "skip": false,
+                          "displayName": "Consulta · clave de Postiz (Vault)",
+                          "type": "PIECE",
+                          "settings": {
+                            "pieceName": "@activepieces/piece-http",
+                            "pieceVersion": "0.11.19",
+                            "actionName": "send_request",
+                            "propertySettings": {},
+                            "input": {
+                              "method": "POST",
+                              "url": "https://rgauumxztblwurzebmsa.supabase.co/functions/v1/integration-get-key",
+                              "headers": {
+                                "Content-Type": "application/json",
+                                "X-AP-Token": "PENDIENTE_GENERAR_SECRETO_AP_INTEGRATION_TOKEN"
+                              },
+                              "queryParams": {},
+                              "authType": "NONE",
+                              "body_type": "json",
+                              "body": {
+                                "provider": "postiz"
+                              },
+                              "response_is_binary": false,
+                              "followRedirects": true
+                            },
+                            "errorHandlingOptions": {
+                              "retryOnFailure": {
+                                "value": false
+                              },
+                              "continueOnFailure": {
+                                "value": false
+                              }
+                            }
+                          },
+                          "nextAction": {
+                            "name": "step_5",
+                            "valid": false,
+                            "skip": false,
+                            "displayName": "Ejecuta · Postiz: crear post programado",
+                            "type": "PIECE",
+                            "settings": {
+                              "pieceName": "@activepieces/piece-http",
+                              "pieceVersion": "0.11.19",
+                              "actionName": "send_request",
+                              "propertySettings": {},
+                              "input": {
+                                "method": "POST",
+                                "url": "PENDIENTE_URL_POSTIZ/public/v1/posts",
+                                "headers": {
+                                  "Content-Type": "application/json",
+                                  "Authorization": "{{step_4.body.key}}"
+                                },
+                                "queryParams": {},
+                                "authType": "NONE",
+                                "body_type": "json",
+                                "body": {
+                                  "type": "schedule",
+                                  "shortLink": false,
+                                  "date": "{{step_2.rows[0].publish_at}}",
+                                  "tags": [],
+                                  "posts": [
+                                    {
+                                      "integration": {
+                                        "id": "PENDIENTE_INTEGRATION_ID_LINKEDIN"
+                                      },
+                                      "value": [
+                                        {
+                                          "content": "{{step_2.rows[0].body}}"
+                                        }
+                                      ],
+                                      "settings": {
+                                        "__type": "linkedin-page"
+                                      }
+                                    }
+                                  ]
+                                },
+                                "response_is_binary": false,
+                                "followRedirects": true
+                              },
+                              "errorHandlingOptions": {
+                                "retryOnFailure": {
+                                  "value": false
+                                },
+                                "continueOnFailure": {
+                                  "value": false
+                                }
+                              }
+                            },
+                            "nextAction": {
+                              "name": "step_6",
+                              "valid": false,
+                              "skip": false,
+                              "displayName": "Deja rastro",
+                              "type": "PIECE",
+                              "settings": {
+                                "pieceName": "@activepieces/piece-google-sheets",
+                                "pieceVersion": "0.16.4",
+                                "actionName": "insert_row",
+                                "propertySettings": {
+                                  "values": {
+                                    "type": "MANUAL",
+                                    "schema": {
+                                      "A": {
+                                        "type": "SHORT_TEXT",
+                                        "required": false,
+                                        "displayName": "fecha",
+                                        "defaultValue": ""
+                                      },
+                                      "B": {
+                                        "type": "SHORT_TEXT",
+                                        "required": false,
+                                        "displayName": "flujo",
+                                        "defaultValue": ""
+                                      },
+                                      "C": {
+                                        "type": "SHORT_TEXT",
+                                        "required": false,
+                                        "displayName": "tarea",
+                                        "defaultValue": ""
+                                      },
+                                      "D": {
+                                        "type": "SHORT_TEXT",
+                                        "required": false,
+                                        "displayName": "resultado",
+                                        "defaultValue": ""
+                                      },
+                                      "E": {
+                                        "type": "SHORT_TEXT",
+                                        "required": false,
+                                        "displayName": "detalle",
+                                        "defaultValue": ""
+                                      }
+                                    }
+                                  }
+                                },
+                                "input": {
+                                  "auth": "{{connections['HirdYf0okm7HontbOX9RE']}}",
+                                  "includeTeamDrives": false,
+                                  "spreadsheetId": "1QILqdaxNUUYoHUyLsoDgHe45QP_LgGKPnwFhdKmM4BQ",
+                                  "sheetId": 1870392726,
+                                  "first_row_headers": true,
+                                  "as_string": false,
+                                  "values": {
+                                    "A": "{{step_2.ran_at}}",
+                                    "B": "MKT-F2 Programar el post de LinkedIn",
+                                    "C": "VRL-MKT-C03",
+                                    "D": "ok",
+                                    "E": "{{step_2.count}} registros, {{step_2.discarded}} descartados"
+                                  }
+                                },
+                                "errorHandlingOptions": {
+                                  "retryOnFailure": {
+                                    "value": false
+                                  },
+                                  "continueOnFailure": {
+                                    "value": false
+                                  }
+                                }
+                              }
+                            }
+                          }
                         }
                       }
                     }
