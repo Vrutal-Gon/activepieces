@@ -60,3 +60,7 @@ datos/fuentes/
 _eliminar/
 # Secretos de instancias de cliente
 infra/instance/clients/
+
+# Volcado temporal de una base de cliente viva (scripts/regenerar-plantilla-cliente.sh).
+# Es material de trabajo para curar la plantilla, no una fuente de verdad.
+db/plantillas/_volcado_base_viva.sql

@@ -75,9 +75,9 @@ error que la regla de empate llama irreversible.
 |---|---|---|---|
 | 1 | **Tabla de control `schema_change_log`** (fichero, hash, fecha, quién) + su cambio fechado | `db/plantillas/cambios/` | Creada y retro-rellenada con lo ya aplicado en Vrutal-labs |
 | 2 | **Script de alta** que aplica plantilla + todos los cambios **en orden de fecha**, registra cada uno y **aborta en voz alta** si uno falla | `db/` o `scripts/` | Idempotente; probado dos veces; falla a propósito en una prueba |
-| 3 | **Regenerar `vrutal_client_project_template.sql`** desde la base viva | `db/plantillas/` | 20 tablas, no 10; `handle_new_user` toma el rol de `app_metadata` |
+| 3 | **Regenerar `vrutal_client_project_template.sql`** desde la base viva → **script listo, BLOQUEADO en credenciales** | `scripts/regenerar-plantilla-cliente.sh` | **23** tablas, no 10 (recontadas el 15 oct); `handle_new_user` toma el rol de `app_metadata` |
 | 4 | ~~**Auditoría de Vrutal1st**: cerrar la `002` a medias y las sobrecargas duplicadas de la `028`~~ → **HECHO el 2026-10-14, y no había SQL que arreglar.** Queda solo retirar la deuda de la documentación | `db/migrations/`, docs | Ver «Resultado de la auditoría» abajo |
-| 5 | **Retirar permisos por defecto** de Supabase (`TRUNCATE`, `REFERENCES`, `TRIGGER` para `anon` y `authenticated`) en las tablas que faltan | cambio fechado | Hoy solo hecho en `integrations`; repasar el resto |
+| 5 | ~~**Retirar permisos por defecto** de Supabase en las tablas que faltan~~ → **CONSTRUIDO el 2026-10-15**, pendiente de aplicar. Encontrada además **la causa raíz** | `2026-10-15_quitar_permisos_regalados.sql` | Prueba en seco 5/5 y migración idempotente, verificadas en Postgres desechable |
 | 6 | ~~**Probar en sombra el paso «Pide permiso» de F2**~~ → **HECHO el 2026-10-14.** Resuelto contra motor y servidor en vivo; apareció un fallo distinto y peor | `Activepieces/flows/MKT-F2_linkedin/` | Ver «Resultado del 6» abajo |
 
 **Por qué el 6 entra en una semana de infraestructura:** es barato, y resuelve la única
@@ -117,6 +117,46 @@ cuesta. Si el flujo no se reanuda, hace falta otra fuente de URL de reanudación
 | Un cambio fechado puede no ser idempotente y romper al reaplicarse | Cada uno lleva su `.test.sql` en seco; los que no lo tengan, se les hace |
 | Tocar permisos (el 5) puede romper una pantalla en uso | Un cambio por tabla, con su prueba en seco, y verificar la pantalla afectada |
 | El 6 puede salir mal y abrir rediseño | Es justo el objetivo: saberlo ahora. Si sale mal, pasa a diseño, no a construcción a ciegas |
+
+---
+
+## Resultado del 5 y del 3 (2026-10-15)
+
+**El 5 tenía una causa raíz que la nota original no recogía.** Medido en Vrutal-labs: **18 de
+las 23 tablas** de `public` daban a `anon`/`authenticated` los permisos `TRUNCATE`,
+`REFERENCES` y `TRIGGER` (y `MAINTAIN`, que es de PG17 — el servidor va por 17.6). Entre esas
+18 están las tres `catalog_*_ro`: bien cerradas para leer (`select` de `authenticated` da
+`false`), pero **con truncate**. No es fuga de la IP; es peor en otro sentido, porque un
+`truncate` de `catalog_flow_ro` se lleva por delante las claves foráneas de
+`approval_requests` y `run_log`.
+
+Y revocar sobre las tablas de hoy **no habría bastado**: los permisos vuelven solos en cada
+tabla nueva, porque vienen de los **privilegios por defecto del esquema**. En
+`pg_default_acl` hay dos entradas para tablas — la de `postgres` (`anon`/`authenticated` =
+`Dxtm`) y la de `supabase_admin` (`arwdDxtm`). Alguien ya limpió en su día la de `postgres`
+quitando `arwd` pero dejó `Dxtm`, así que cada tabla creada desde el SQL Editor nacía otra vez
+abierta. El cambio arregla las dos cosas. La entrada de `supabase_admin` no se puede tocar
+desde aquí y se explica por qué en la cabecera.
+
+**El 3 queda bloqueado en credenciales, con el trabajo hecho alrededor.**
+`scripts/regenerar-plantilla-cliente.sh` extrae el esquema con `pg_dump` en Docker, pero
+necesita el `DATABASE_URL` del cliente —que no se ha leído a propósito—. Lo que sí resuelve:
+**comprueba el orden** y aborta si la base de origen todavía tiene `client_ticket` o permisos
+regalados, porque una plantilla se escribe desde una base limpia y no al revés. Deja el volcado
+aparte (en `.gitignore`) en vez de sobreescribir la plantilla, que es un documento curado.
+Recuento real: **23 tablas, no las 20 documentadas ni las 10 de la plantilla.**
+
+### Alcance añadido, señalado (DoD: nada se cuela)
+
+Al inventariar las tablas apareció algo que **no estaba en el plan**: la tabla
+**`client_ticket` sigue creada** en Vrutal-labs, con RLS y dos políticas, **vacía**. Es un
+resto anterior a **D-20** (2026-10-08), que decidió que los tickets no viven en la base del
+cliente sino centralizados en Vrutal1st. El README de esta carpeta ya lo daba por superado.
+
+Va en **su propio cambio** (`2026-10-15_retirar_client_ticket.sql`), no mezclado con el 5, y
+con **guarda**: si en algún proyecto tuviera filas, **falla en vez de borrar**. Importa
+retirarla antes de regenerar la plantilla, o nacería en cada cliente nuevo. Probado en los dos
+sentidos.
 
 ---
 
