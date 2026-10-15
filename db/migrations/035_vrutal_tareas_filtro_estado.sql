@@ -1,7 +1,7 @@
 -- =====================================================================
 -- Proyecto Supabase: Vrutal 1st (apmhvqlvwjcrwfaixgju) — el panel de control.
 -- NO en el VrutalOS de ningún cliente: ese es otro proyecto, uno por cliente.
--- VRUTAL 1st · Migración 034 · La lista de Tareas muestra y filtra por Estado
+-- VRUTAL 1st · Migración 035 · La lista de Tareas muestra y filtra por Estado
 --
 -- El founder no encontraba `VRL-MKT-C03` en el panel. La búsqueda sí la cubría —
 -- `catalog_list_tasks` busca por `task_code` Y por `statement`, y no filtra por estado— pero
