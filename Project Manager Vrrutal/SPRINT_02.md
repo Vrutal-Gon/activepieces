@@ -16,7 +16,7 @@ parado a MKT-F2.
 | # | Entregable | Criterio de hecho |
 |---|---|---|
 | 1 | ~~**Permisos regalados en Vrutal1st**~~ → **HECHO 2026-10-15**, migración `032` | 23 tablas → 0; `catalog` y `deployment` ya estaban limpios |
-| 2 | **Dominio de correo con tabla + trigger** sobre `auth.users` | Un usuario dentro no puede cambiarse el correo a otro dominio |
+| 2 | ~~**Dominio de correo con tabla + trigger** sobre `auth.users`~~ → **HECHO 2026-10-15**, aplicado en Vrutal-labs | Bloquea alta, cambio de correo y solicitud de cambio. 6/6 en la prueba |
 | 3 | **Construir el paso «Pide permiso» de MKT-F2** | El flujo se pausa, aparece en Aprobaciones de VrutalOS y **se reanuda de verdad** al decidir |
 | 4 | **MFA del staff**: activar TOTP y exigir `aal2` en `has_platform_role()` | Founder enrolado y verificado antes de exigirlo |
 
