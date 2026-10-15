@@ -75,7 +75,7 @@ error que la regla de empate llama irreversible.
 |---|---|---|---|
 | 1 | **Tabla de control `schema_change_log`** (fichero, hash, fecha, quién) + su cambio fechado | `db/plantillas/cambios/` | Creada y retro-rellenada con lo ya aplicado en Vrutal-labs |
 | 2 | **Script de alta** que aplica plantilla + todos los cambios **en orden de fecha**, registra cada uno y **aborta en voz alta** si uno falla | `db/` o `scripts/` | Idempotente; probado dos veces; falla a propósito en una prueba |
-| 3 | **Regenerar `vrutal_client_project_template.sql`** desde la base viva → **script listo, BLOQUEADO en credenciales** | `scripts/regenerar-plantilla-cliente.sh` | **23** tablas, no 10 (recontadas el 15 oct); `handle_new_user` toma el rol de `app_metadata` |
+| 3 | ~~**Regenerar `vrutal_client_project_template.sql`**~~ → **HECHO el 2026-10-15.** Regenerada leyendo la base viva por MCP, sin necesitar `pg_dump` ni credenciales | `db/plantillas/vrutal_client_project_template.sql` | 10 tablas → **23**. Aplicada entera en un Postgres desechable: `catalogo_cerrado=f`, 23 tablas, 0 permisos regalados |
 | 4 | ~~**Auditoría de Vrutal1st**: cerrar la `002` a medias y las sobrecargas duplicadas de la `028`~~ → **HECHO el 2026-10-14, y no había SQL que arreglar.** Queda solo retirar la deuda de la documentación | `db/migrations/`, docs | Ver «Resultado de la auditoría» abajo |
 | 5 | ~~**Retirar permisos por defecto** de Supabase en las tablas que faltan~~ → **CONSTRUIDO el 2026-10-15**, pendiente de aplicar. Encontrada además **la causa raíz** | `2026-10-15_quitar_permisos_regalados.sql` | Prueba en seco 5/5 y migración idempotente, verificadas en Postgres desechable |
 | 6 | ~~**Probar en sombra el paso «Pide permiso» de F2**~~ → **HECHO el 2026-10-14.** Resuelto contra motor y servidor en vivo; apareció un fallo distinto y peor | `Activepieces/flows/MKT-F2_linkedin/` | Ver «Resultado del 6» abajo |
@@ -120,7 +120,36 @@ cuesta. Si el flujo no se reanuda, hace falta otra fuente de URL de reanudación
 
 ---
 
-## Resultado del 5 y del 3 (2026-10-15)
+## Resultado del 3 (2026-10-15) · plantilla regenerada
+
+Regenerada leyendo la base viva de Vrutal-labs **por la conexión MCP**, así que no hizo falta
+`pg_dump` ni la contraseña: **10 tablas → 23**. Lleva las 23 tablas en orden de dependencia,
+22 funciones, 1 vista, 8 triggers, 54 políticas, los permisos de tabla partiendo de `revoke
+all`, y la revocación de privilegios por defecto.
+
+**Probada entera** en un Postgres desechable con `auth` y `vault` simulados:
+`catalogo_cerrado = f`, **23 tablas**, **0 permisos regalados**. Las diferencias con la base
+viva son las dos exclusiones deliberadas (`client_ticket` y `staff_contract_specialist`) más
+el trigger de `auth.users`, que la consulta sobre `public` no contaba.
+
+### Dos bugs encontrados al regenerarla
+
+**1 · `handle_new_user` no conocía el rol Manager** — arreglado y aplicado. El rol se añadió
+el 2026-10-06 y ese cambio actualizó el check constraint, `is_manager()`,
+`is_admin_or_manager()`, la pantalla de Equipo y `team-invite`… pero **no el trigger que crea
+el perfil**. Invitar a alguien como Manager lo creaba como **Usuario normal, en silencio**.
+Nadie lo sufrió porque Vrutal-labs solo tiene una cuenta. Mismo patrón que el 13 de octubre:
+nada falla al arrancar, solo al usarse.
+
+**2 · `staff_contract_specialist()` está en la base del CLIENTE** y no debería. Usa
+`catalog.job_role`, `public.tenant_specialist`, `has_permission()` y `staff_can_access_tenant()`,
+que no existen ahí: es la **migración 024 de Vrutal1st aplicada por error** en el proyecto del
+cliente, donde está muerta. Excluida de la plantilla para que no se propague. Retirarla de
+Vrutal-labs queda pendiente (es un `drop function`).
+
+---
+
+## Resultado del 5 y del 3 anterior (2026-10-15)
 
 **El 5 tenía una causa raíz que la nota original no recogía.** Medido en Vrutal-labs: **18 de
 las 23 tablas** de `public` daban a `anon`/`authenticated` los permisos `TRUNCATE`,
