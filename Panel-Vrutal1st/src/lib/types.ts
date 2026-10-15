@@ -349,6 +349,7 @@ export interface TaskListRow extends TaskSummary {
   process_id: string | null;
   process_name: string | null;
   primary_pattern: string | null;
+  status: string;
   role_count: number;
   component_count: number;
   composition_count: number;

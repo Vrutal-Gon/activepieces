@@ -23,6 +23,7 @@ const isTaskListRow = (v: unknown): v is TaskListRow =>
   isStrOrNull(v.process_id) &&
   isStrOrNull(v.process_name) &&
   isStrOrNull(v.primary_pattern) &&
+  isStr(v.status) &&
   isNum(v.role_count) &&
   isNum(v.component_count) &&
   isNum(v.composition_count) &&
@@ -47,6 +48,7 @@ export interface TaskListFilter {
   domainId: string | null;
   processId: string | null;
   pattern: string | null;
+  status: string | null;
   onlyUsed: boolean;
   limit: number;
   offset: number;
@@ -63,6 +65,7 @@ export function listTasks(f: TaskListFilter, signal?: AbortSignal) {
       p_offset: f.offset,
       p_process_id: f.processId,
       p_pattern: f.pattern,
+      p_status: f.status,
     },
     isArrayOf(isTaskListRow),
     signal,

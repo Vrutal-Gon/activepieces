@@ -5,6 +5,7 @@ import { useAsyncData } from '../lib/hooks/useAsyncData';
 import { PageHead, type Crumb } from '../components/PageHead';
 import { ErrorNotice, LoadingState } from '../components/StatusViews';
 import { TaskTypeFilters } from '../components/TaskTypeFilters';
+import { StatusPill } from '../components/StatusPill';
 import '../styles/pages/catalog.css';
 
 const PAGE_SIZE = 25;
@@ -29,6 +30,7 @@ export function TaskList({ target, crumbs, title, intro }: TaskListProps) {
   const domainId = params.get('dep');
   const processId = params.get('proc');
   const pattern = params.get('pat');
+  const estado = params.get('est');
   const onlyUsed = params.get('todas') !== '1';
   const page = Math.max(0, Number(params.get('p') ?? '0') || 0);
   const jumpTo = params.get('tarea');
@@ -75,10 +77,10 @@ export function TaskList({ target, crumbs, title, intro }: TaskListProps) {
   const load = useCallback(
     (signal: AbortSignal) =>
       listTasks(
-        { query, domainId, processId, pattern, onlyUsed, limit: PAGE_SIZE, offset: page * PAGE_SIZE },
+        { query, domainId, processId, pattern, status: estado, onlyUsed, limit: PAGE_SIZE, offset: page * PAGE_SIZE },
         signal,
       ),
-    [query, domainId, processId, pattern, onlyUsed, page],
+    [query, domainId, processId, pattern, estado, onlyUsed, page],
   );
   const { state, reload } = useAsyncData(load);
 
@@ -122,6 +124,19 @@ export function TaskList({ target, crumbs, title, intro }: TaskListProps) {
             onPattern={(v) => setParam('pat', v)}
           />
           <label className="inline-field">
+            Estado
+            <select
+              className="text-input"
+              value={estado ?? ''}
+              onChange={(e) => setParam('est', e.target.value || null)}
+            >
+              <option value="">Todos</option>
+              <option value="draft">Borrador</option>
+              <option value="validated">Validada</option>
+              <option value="deprecated">Obsoleta</option>
+            </select>
+          </label>
+          <label className="inline-field">
             Departamento
             <select
               className="text-input"
@@ -153,6 +168,7 @@ export function TaskList({ target, crumbs, title, intro }: TaskListProps) {
                 <tr>
                   <th>Tarea</th>
                   <th>Tipo</th>
+                  <th>Estado</th>
                   <th className="data-table__num">Roles</th>
                   <th className="data-table__num">Componentes</th>
                   <th className="data-table__num">Composiciones</th>
@@ -171,6 +187,9 @@ export function TaskList({ target, crumbs, title, intro }: TaskListProps) {
                       <span className="data-table__primary">{t.process_name ?? 'Sin proceso'}</span>
                       <span className="data-table__secondary">{t.primary_pattern ?? '—'}</span>
                     </td>
+                    <td>
+                      <StatusPill status={t.status} />
+                    </td>
                     <td className="data-table__num">{t.role_count}</td>
                     <td className="data-table__num">{t.component_count}</td>
                     <td className="data-table__num">{t.composition_count}</td>
@@ -178,7 +197,7 @@ export function TaskList({ target, crumbs, title, intro }: TaskListProps) {
                 ))}
                 {state.data.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="data-table__empty">
+                    <td colSpan={6} className="data-table__empty">
                       Ninguna tarea coincide con el filtro.
                     </td>
                   </tr>
