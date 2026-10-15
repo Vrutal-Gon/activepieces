@@ -273,7 +273,7 @@ Y P0 real hoy: constituir la entidad legal — es lo único que bloquea contrato
 
 ## 11. Sprint Planning Template
 
-> **Sprint en curso:** [`SPRINT_01.md`](SPRINT_01.md) (semana del 2026-10-14). La plantilla de
+> **Sprint en curso:** [`SPRINT_02.md`](SPRINT_02.md) (semana del 2026-10-15). Anterior: [`SPRINT_01.md`](SPRINT_01.md), cerrado. La plantilla de
 > abajo se queda para reutilizar; cada sprint se escribe en su propio `SPRINT_NN.md`.
 
 ### Sprint Goal
