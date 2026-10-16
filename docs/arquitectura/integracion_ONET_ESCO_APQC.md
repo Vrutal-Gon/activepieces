@@ -232,3 +232,84 @@ Importar las tres bases completas: 3-4 días (más que solo Marketing, porque ha
 - O*NET-ESCO Crosswalk — onetcenter.org/crosswalks.html
 - ESCO Download — esco.ec.europa.eu/en/use-esco/download
 - APQC Process Classification Framework — apqc.org/process-frameworks
+
+---
+
+## Lo que de verdad se importó (añadido 2026-10-16, por arqueología)
+
+Este documento es un **plan que nunca se ejecutó como está escrito**. La importación real fue
+ad-hoc, fuera del repositorio, y no dejó script ni criterio. Esto es lo que se ha podido
+reconstruir comprobándolo contra la base viva, y vale más que el plan de arriba porque
+describe lo que hay.
+
+### El criterio que se usó: Core
+
+El import tomó las tareas con **`Task Type = 'Core'`** del `task_statements.csv`, y en las
+ocupaciones que no tienen ninguna Core, todas (el fichero trae 418 filas con el tipo vacío).
+
+**Verificado: 21 de 21 ocupaciones cuadran** con su recuento de Core. La única aparente
+excepción, `13-2051.00` (26 en base, 0 Core), tiene sus 26 tareas con el tipo vacío — así que
+entraron todas, consistente con la regla.
+
+Esto contradice la línea 5 de este documento («importar el conjunto completo no cuesta más que
+importar un subconjunto»): sí se filtró, y se filtró **antes** de cargar, no en SQL. Las
+Supplemental no están en la base y recuperarlas exige volver al CSV: `catalog.task` **no tiene
+columna `task_type`**.
+
+### Las 24 ocupaciones del catálogo
+
+Este es el filtro que define todo el catálogo, y hasta hoy no estaba escrito en ninguna parte.
+Conteo de tareas a 2026-10-16:
+
+| SOC | Ocupación | Tareas |
+|---|---|---|
+| `11-2011.00` | Advertising and Promotions Managers | 22 |
+| `11-2021.00` | Marketing Managers | 12 |
+| `11-2022.00` | Sales Managers | 15 |
+| `11-2032.00` | Public Relations Managers | 19 ← nueva (038) |
+| `11-3031.00` | Financial Managers | 6 |
+| `11-3061.00` | Purchasing Managers | 18 |
+| `11-3121.00` | Human Resources Managers | 23 |
+| `13-1023.00` | Purchasing Agents | 17 |
+| `13-1071.00` | Human Resources Specialists | 19 |
+| `13-1081.00` | Logisticians | 22 |
+| `13-1082.00` | Project Management Specialists | 20 |
+| `13-1151.00` | Training and Development Specialists | 18 |
+| `13-1161.00` | Market Research Analysts and Marketing Specialists | 11 |
+| `13-1161.01` | Search Marketing Strategists | 25 |
+| `13-2011.00` | Accountants and Auditors | 30 |
+| `13-2051.00` | Financial and Investment Analysts | 26 (todas, no tiene Core) |
+| `15-2051.01` | Business Intelligence Analysts | 17 |
+| `27-1026.00` | Merchandise Displayers and Window Trimmers | 16 |
+| `27-3031.00` | Public Relations Specialists | 15 ← nueva (038) |
+| `27-3042.00` | Technical Writers | 8 |
+| `41-3011.00` | Advertising Sales Agents | 20 ← nueva (038) |
+| `41-4012.00` | Sales Representatives, Wholesale and Manufacturing | 10 |
+| `43-4051.00` | Customer Service Representatives | 7 |
+| `43-6011.00` | Executive Secretaries and Executive Administrative Assistants | 15 |
+
+### Las fases que no se hicieron
+
+- **ESCO (Fase 2): no existe.** Cero tareas `source='esco'`. En `datos/fuentes/onet-esco-apqc/`
+  no hay ningún fichero de ESCO: lo que hay (`essential_skills.csv`, `job_titles.csv`,
+  `transferable_skills.csv`, `software_skills.csv`) son exports de O*NET OnLine. El nombre de
+  la carpeta engaña.
+- **Crosswalk (Fase 3): no existe.**
+- **Esquema unificado (Fase 5): no existe.** Ninguna de las 11 tablas `onet_*` / `esco_*` /
+  `apqc_pcf` ni `vrutal_role_task_master`. Su función la cumplen `catalog.task` (aplanada, con
+  la trazabilidad en `source` + `source_code`) y `catalog.job_role_task`.
+- **APQC**: el fichero en disco es la **6.0.0 de abril 2023**, no la 8.0 que pide la Fase 4. Y
+  el `pcf_id` de 5 dígitos que la línea 83 declara como clave externa estable **no se
+  conservó**: los 665 elementos APQC viven con su código solo en comentarios de SQL.
+
+### Cómo importar más, ahora sí de forma repetible
+
+`scripts/onet-tareas-a-sql.mjs` (creado el 2026-10-16) lee los CSV y emite el SQL. Mantiene la
+regla Core por defecto y es idempotente por `(source, source_code)`:
+
+```
+node scripts/onet-tareas-a-sql.mjs --soc 11-2022.00,41-4012.00 --informe   # ver el reparto
+node scripts/onet-tareas-a-sql.mjs --soc 11-2022.00,41-4012.00 > /tmp/x.sql
+```
+
+Precedente de uso: `db/migrations/038_vrutal_tareas_marketing_core.sql`.
