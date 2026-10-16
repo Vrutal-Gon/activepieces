@@ -1,13 +1,13 @@
 {
   "name": "MKT-F2 · Programar el post de LinkedIn",
   "type": "SHARED",
-  "summary": "content_promotion · VRL-MKT-C03 · Recibe → Consulta → Ordena → Pide permiso → Ejecuta → Deja rastro",
+  "summary": "content_promotion · TSK-001300 (source_code VRL-MKT-C03) · Recibe → Consulta → Ordena → Pide permiso → Ejecuta → Deja rastro",
   "description": "Vrutal Labs · Marketing. Esqueleto generado desde el diagrama (ver MARKETING_flujos). Los pasos «pendiente» fallan a propósito.",
   "tags": [
     "vrutal",
     "marketing",
     "content_promotion",
-    "VRL-MKT-C03"
+    "TSK-001300"
   ],
   "blogUrl": "",
   "metadata": {},
@@ -155,7 +155,7 @@
                       "body_type": "json",
                       "body": {
                         "job_role_key": "content_promotion",
-                        "task_key": "VRL-MKT-C03",
+                        "task_key": "TSK-001300",
                         "payload": {
                           "body": "{{step_2.rows[0].body}}",
                           "publish_at": "{{step_2.rows[0].publish_at}}"
@@ -395,7 +395,7 @@
                                   "values": {
                                     "A": "{{step_2.ran_at}}",
                                     "B": "MKT-F2 Programar el post de LinkedIn",
-                                    "C": "VRL-MKT-C03",
+                                    "C": "TSK-001300",
                                     "D": "ok",
                                     "E": "{{step_2.count}} registros, {{step_2.discarded}} descartados"
                                   }

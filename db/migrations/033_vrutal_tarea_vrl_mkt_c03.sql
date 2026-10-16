@@ -1,4 +1,21 @@
 -- =====================================================================
+-- ⛔ MIGRACIÓN REVERTIDA POR LA 036 (2026-10-16). NO APLICAR.
+--
+-- Fue un error: creó una tarea con `task_code = 'VRL-MKT-C03'`, violando la convención
+-- documentada en `docs/arquitectura/VRUTAL_OS_Modelo_Datos_Roles_Tareas.md:156` — el
+-- `task_code` es opaco (`TSK-NNNNNN`) y los códigos semánticos están prohibidos porque
+-- obligan a renumerar cuando se reorganiza la taxonomía.
+--
+-- Y era innecesaria: `TSK-001300` ya existía desde la 020, con `source_code = 'VRL-MKT-C03'`
+-- y la misma ficha. El diagnóstico de abajo («cero tareas VRL-% de 1.093») es FALSO: se buscó
+-- en `task_code` cuando el código Vrutal vive en `source_code`, igual que los de O*NET y APQC.
+-- Lo único que faltaba era habilitarla en `tenant_specialist_flow`.
+--
+-- Se conserva el fichero a propósito: el rastro del error es parte del registro.
+-- Lo que sigue queda solo como documentación de lo que se hizo mal.
+-- =====================================================================
+
+-- =====================================================================
 -- Proyecto Supabase: Vrutal 1st (apmhvqlvwjcrwfaixgju) — el panel de control.
 -- NO en el VrutalOS de ningún cliente: ese es otro proyecto, uno por cliente.
 -- VRUTAL 1st · Migración 033 · Crear la tarea VRL-MKT-C03 (la de MKT-F2)
