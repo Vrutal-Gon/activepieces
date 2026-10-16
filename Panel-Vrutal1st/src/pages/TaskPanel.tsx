@@ -7,11 +7,13 @@ import { ErrorNotice, LoadingState } from '../components/StatusViews';
 import { StatusPill } from '../components/StatusPill';
 import { ComponentsTab, type TaskRoleContext } from './task/ComponentsTab';
 import { CompositionsTab } from './task/CompositionsTab';
+import { FichaTab } from './task/FichaTab';
 import type { TaskTab } from './TaskList';
 import type { TaskRoleRow } from '../lib/types';
 import '../styles/pages/catalog.css';
 
 const TABS: { key: TaskTab; label: string }[] = [
+  { key: 'ficha', label: 'Ficha' },
   { key: 'componentes', label: 'Componentes' },
   { key: 'composiciones', label: 'Composiciones' },
   { key: 'roles', label: 'Roles que la usan' },
@@ -86,6 +88,7 @@ export function TaskPanel({ taskId, tab }: TaskPanelProps) {
     : [{ label: 'Tareas', to: '/tareas' }];
   const search = roleId ? `?rol=${encodeURIComponent(roleId)}` : '';
   const tabCount: Record<TaskTab, number> = {
+    ficha: 0,
     componentes: counts.components,
     composiciones: counts.compositions,
     roles: roles.length,
@@ -122,11 +125,12 @@ export function TaskPanel({ taskId, tab }: TaskPanelProps) {
             aria-current={t.key === tab ? 'page' : undefined}
           >
             {t.label}
-            <span className="client-tabs__count">{tabCount[t.key]}</span>
+            {tabCount[t.key] > 0 && <span className="client-tabs__count">{tabCount[t.key]}</span>}
           </NavLink>
         ))}
       </nav>
 
+      {tab === 'ficha' && <FichaTab task={task} onChanged={refresh} />}
       {tab === 'componentes' && <ComponentsTab task={task} roleContext={roleContext} onChanged={refresh} />}
       {tab === 'composiciones' && <CompositionsTab task={task} onChanged={refresh} />}
       {tab === 'roles' && <RolesTab taskId={task.id} roles={roles} activeRoleId={roleRow?.job_role_id ?? null} />}

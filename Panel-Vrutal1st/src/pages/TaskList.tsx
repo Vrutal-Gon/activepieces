@@ -10,7 +10,7 @@ import '../styles/pages/catalog.css';
 
 const PAGE_SIZE = 25;
 
-export type TaskTab = 'componentes' | 'composiciones' | 'roles';
+export type TaskTab = 'ficha' | 'componentes' | 'composiciones' | 'roles';
 
 interface TaskListProps {
   /** Pestaña de la ficha a la que lleva cada fila. */

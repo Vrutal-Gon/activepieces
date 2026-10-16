@@ -72,6 +72,31 @@ export function listTasks(f: TaskListFilter, signal?: AbortSignal) {
   );
 }
 
+export interface TaskUpdate {
+  taskId: string;
+  statement: string | null;
+  processId: string | null;
+  primaryPattern: string | null;
+  risk: string | null;
+  status: string;
+}
+
+/** Edita la ficha de una tarea. `task_code`, `source` y `source_code` NO se tocan. */
+export function updateTask(u: TaskUpdate) {
+  return rpc(
+    'catalog_update_task',
+    {
+      p_task_id: u.taskId,
+      p_statement: u.statement,
+      p_process_id: u.processId,
+      p_primary_pattern: u.primaryPattern,
+      p_risk: u.risk,
+      p_status: u.status,
+    },
+    isVoid,
+  );
+}
+
 const isTaskDetail = (v: unknown): v is TaskDetail =>
   isObj(v) &&
   isTaskSummary(v) &&
