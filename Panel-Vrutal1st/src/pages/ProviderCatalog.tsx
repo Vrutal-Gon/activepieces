@@ -40,6 +40,7 @@ export function ProviderCatalog() {
 
   async function createProvider(e: FormEvent) {
     e.preventDefault();
+    setError(null);
     const { error } = await supabase.rpc('catalog_create_provider', {
       p_name: newProvider.name,
       p_category: newProvider.category.trim().toLowerCase(),
@@ -71,6 +72,7 @@ export function ProviderCatalog() {
 
   async function saveEdit() {
     if (!editingId || !editForm) return;
+    setError(null);
     const { error } = await supabase.rpc('catalog_update_provider', {
       p_id: editingId,
       p_name: editForm.name,
@@ -90,6 +92,7 @@ export function ProviderCatalog() {
   }
 
   async function deleteProvider(id: string) {
+    setError(null);
     const { error } = await supabase.rpc('catalog_delete_provider', { p_id: id });
     if (error) {
       setError(error.message);

@@ -7,6 +7,9 @@ import { errorMessage } from '../lib/api/client';
 import { CATALOG_GLOSSARY, KIND_COPY, kindLabel } from '../lib/catalogCopy';
 import { StatusPill } from '../components/StatusPill';
 import '../styles/pages/catalog.css';
+import { blockUsage, contractUsage } from '../lib/api/catalog';
+import { useAsyncData } from '../lib/hooks/useAsyncData';
+import { WhereUsed } from '../components/WhereUsed';
 import { BLOCK_KINDS, type Block, type ComponentVersion, type Contract, type PublishStatus } from '../lib/types';
 
 const NEXT_STATUS: Record<PublishStatus, { to: PublishStatus; label: string; superOnly?: boolean } | null> = {
@@ -59,13 +62,30 @@ export function BlockLibrary() {
   // Contratos: editar un borrador, o duplicar como contrato nuevo con otra clave.
   const [editContract, setEditContract] = useState<{ key: string; version: number; description: string; schema: string } | null>(null);
   const [dupContract, setDupContract] = useState<{ key: string; version: number; newKey: string } | null>(null);
+  // Qué contrato tiene abierto su "quién lo usa", como "clave@versión".
+  const [usageContract, setUsageContract] = useState<string | null>(null);
 
   // ?b=<component_id>: se llega desde un slot de composición; se abre y se resalta ese bloque.
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const focusId = params.get('b');
   // Bloques y contratos en vistas separadas (?vista=contratos) para no apilarlo todo.
   const view = params.get('vista') === 'contratos' ? 'contratos' : 'bloques';
+  // La biblioteca pintaba los 34 bloques de golpe y no tenía ni buscador ni filtro.
+  const blockQuery = params.get('q') ?? '';
+  const kindFilter = params.get('tipo');
   const focusedOnce = useRef(false);
+
+  function setParam(key: string, value: string | null) {
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) next.set(key, value);
+        else next.delete(key);
+        return next;
+      },
+      { replace: true },
+    );
+  }
 
   const loadContracts = useCallback(async () => {
     const { data, error } = await supabase.rpc('catalog_list_contracts');
@@ -322,9 +342,17 @@ export function BlockLibrary() {
     }
   }
 
+  // Filtrado en memoria: son 34 bloques, no hace falta molestar al servidor.
+  const q = blockQuery.trim().toLowerCase();
+  const visibleBlocks = blocks.filter(
+    (b) =>
+      (!q || b.name.toLowerCase().includes(q) || b.comp_type.toLowerCase().includes(q)) &&
+      (!kindFilter || b.kind === kindFilter),
+  );
+
   return (
     <section>
-      <PageHead crumbs={[{ label: 'Construcción · paso 3' }]} title="Bloques y contratos" />
+      <PageHead crumbs={[{ label: 'Biblioteca' }]} title="Bloques y contratos" />
 
       <div className="catalog-stack">
         <details className="catalog-help">
@@ -371,7 +399,36 @@ export function BlockLibrary() {
         {view === 'bloques' && (
           <section className="table-card">
             <div className="table-card__head">
-              <h2 className="table-card__title">Bloques</h2>
+              <h2 className="table-card__title">
+                {visibleBlocks.length === blocks.length
+                  ? `${blocks.length} bloques`
+                  : `${visibleBlocks.length} de ${blocks.length} bloques`}
+              </h2>
+            </div>
+            <div className="table-card__foot inline-form">
+              <input
+                className="text-input"
+                type="search"
+                placeholder="Buscar bloque por nombre…"
+                aria-label="Buscar bloque"
+                value={blockQuery}
+                onChange={(e) => setParam('q', e.target.value || null)}
+              />
+              <label className="inline-field">
+                Tipo de bloque
+                <select
+                  className="text-input"
+                  value={kindFilter ?? ''}
+                  onChange={(e) => setParam('tipo', e.target.value || null)}
+                >
+                  <option value="">Todos</option>
+                  {BLOCK_KINDS.map((k) => (
+                    <option key={k} value={k}>
+                      {k}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
             <table className="data-table">
               <thead>
@@ -384,7 +441,7 @@ export function BlockLibrary() {
                 </tr>
               </thead>
               <tbody>
-                {blocks.map((b) => {
+                {visibleBlocks.map((b) => {
                   const edit = edits[b.component_id] ?? { kind: '', variant: '{}' };
                   const expanded = expandedId === b.component_id;
                   return (
@@ -492,6 +549,7 @@ export function BlockLibrary() {
                         <tr className="data-table__group">
                           <td colSpan={5}>
                             <div className="catalog-stack">
+                              <BlockUsage componentId={b.component_id} />
                               {b.kind === null && (
                                 <p className="notice notice--info">
                                   Asigna un tipo de bloque y guarda antes de usar este componente en una composición.
@@ -777,6 +835,18 @@ export function BlockLibrary() {
                           >
                             Duplicar
                           </button>
+                          <button
+                            type="button"
+                            className="btn btn--sm btn--ghost"
+                            aria-expanded={usageContract === `${c.key}@${c.version}`}
+                            onClick={() =>
+                              setUsageContract((prev) =>
+                                prev === `${c.key}@${c.version}` ? null : `${c.key}@${c.version}`,
+                              )
+                            }
+                          >
+                            Quién lo usa
+                          </button>
                           {isSuperadmin && c.status === 'draft' && (
                             <button type="button" className="btn btn--sm btn--danger" onClick={() => deleteContract(c)}>
                               Eliminar
@@ -784,6 +854,13 @@ export function BlockLibrary() {
                           )}
                         </td>
                       </tr>
+                      {usageContract === `${c.key}@${c.version}` && (
+                        <tr className="data-table__group">
+                          <td colSpan={4}>
+                            <ContractUsage contractKey={c.key} version={c.version} />
+                          </td>
+                        </tr>
+                      )}
                       {editContract?.key === c.key && editContract.version === c.version && (
                         <tr className="data-table__group">
                           <td colSpan={4}>
@@ -888,5 +965,87 @@ export function BlockLibrary() {
         )}
       </div>
     </section>
+  );
+}
+
+/**
+ * Las composiciones que montan este bloque. Antes no había camino de vuelta: desde un slot
+ * se llegaba al bloque (`?b=`), pero desde el bloque no se sabía a cuántos sitios afectaba
+ * cambiarlo, que es justo lo que hay que saber antes de tocarlo.
+ */
+function BlockUsage({ componentId }: { componentId: string }) {
+  const cargar = useCallback((signal: AbortSignal) => blockUsage(componentId, signal), [componentId]);
+  const { state, reload } = useAsyncData(cargar);
+
+  return (
+    <WhereUsed
+      title="Dónde se usa"
+      state={state}
+      onRetry={reload}
+      head={['Composición', 'Paso', 'Tarea', 'Roles']}
+      keyOf={(u) => `${u.composition_id}-${u.slot_key}-${u.component_version}`}
+      empty="Ninguna composición lo monta todavía."
+      row={(u) => (
+        <>
+          <td className="data-table__wrap">
+            <Link className="data-table__primary" to={`/tareas/${encodeURIComponent(u.task_id)}/composiciones`}>
+              {u.composition_name}
+            </Link>
+            <span className="data-table__secondary">
+              <StatusPill status={u.composition_status} /> · bloque v{u.component_version} ({u.version_status})
+            </span>
+          </td>
+          <td className="mono">
+            {u.slot_position}. {u.slot_key}
+          </td>
+          <td className="data-table__wrap">
+            <span className="data-table__primary">{u.statement}</span>
+            <span className="data-table__secondary">{u.task_code}</span>
+          </td>
+          <td className="data-table__wrap">{u.role_names ?? '—'}</td>
+        </>
+      )}
+    />
+  );
+}
+
+/**
+ * Quién produce y quién consume un contrato. Un contrato sin productor es una composición
+ * que nunca va a validar, y eso hasta ahora solo se descubría al pulsar «Comprobar».
+ */
+function ContractUsage({ contractKey, version }: { contractKey: string; version: number }) {
+  const cargar = useCallback(
+    (signal: AbortSignal) => contractUsage(contractKey, version, signal),
+    [contractKey, version],
+  );
+  const { state, reload } = useAsyncData(cargar);
+
+  return (
+    <WhereUsed
+      title={`Quién usa ${contractKey}@${version}`}
+      state={state}
+      onRetry={reload}
+      head={['Relación', 'Bloque', 'Versión']}
+      keyOf={(u) => `${u.relation}-${u.component_id}-${u.version}`}
+      empty="Ningún bloque lo produce ni lo consume. Una composición que lo espere no podrá validar."
+      row={(u) => (
+        <>
+          <td>
+            <span className={`pill pill--${u.relation === 'produce' ? 'ok' : 'pending'}`}>
+              {u.relation === 'produce' ? 'Lo produce' : 'Lo consume'}
+            </span>
+          </td>
+          <td>
+            <Link className="data-table__primary" to={`/bloques?b=${encodeURIComponent(u.component_id)}`}>
+              {u.component_name}
+            </Link>
+            <span className="data-table__secondary">{u.comp_type}</span>
+          </td>
+          <td className="mono">
+            v{u.version} <StatusPill status={u.version_status} />
+          </td>
+        </>
+      )}
+    />
   );
 }

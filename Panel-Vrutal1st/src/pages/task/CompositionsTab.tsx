@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useSearchParams } from 'react-router';
 import { Link } from 'react-router';
 import { supabase } from '../../lib/supabaseClient';
 import { duplicateComposition } from '../../lib/api/catalog';
@@ -70,7 +71,24 @@ interface CompositionsTabProps {
 
 export function CompositionsTab({ task, onChanged }: CompositionsTabProps) {
   const [compositions, setCompositions] = useState<Composition[] | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Qué composición está abierta vive en la URL (?comp=): sin eso, enviar «mira este paso»
+  // obligaba a decir también en qué pestaña y qué chip pulsar.
+  const [search, setSearch] = useSearchParams();
+  const selectedId = search.get('comp');
+  const setSelectedId = useCallback(
+    (id: string | null) => {
+      setSearch(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (id) next.set('comp', id);
+          else next.delete('comp');
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearch],
+  );
   const [slots, setSlots] = useState<CompositionSlot[]>([]);
   const [issues, setIssues] = useState<CompositionIssue[] | null>(null);
   const [versionOptions, setVersionOptions] = useState<VersionOption[]>([]);
@@ -116,6 +134,8 @@ export function CompositionsTab({ task, onChanged }: CompositionsTabProps) {
     else setIssues((data ?? []) as CompositionIssue[]);
   }, []);
 
+  // Las versiones de todos los bloques del tipo, en UNA llamada. Antes se pedía una RPC
+  // por bloque solo para poder pintar el desplegable de un paso.
   const loadVersionOptions = useCallback(async (kind: BlockKind) => {
     const { data, error } = await supabase.rpc('catalog_list_blocks');
     if (error) {
@@ -123,18 +143,25 @@ export function CompositionsTab({ task, onChanged }: CompositionsTabProps) {
       return;
     }
     const blocks = ((data ?? []) as Block[]).filter((b) => b.kind === kind && b.version_count > 0);
+    if (blocks.length === 0) {
+      setVersionOptions([]);
+      return;
+    }
+    const { data: vs, error: vErr } = await supabase.rpc('catalog_list_component_versions_bulk', {
+      p_component_ids: blocks.map((b) => b.component_id),
+    });
+    if (vErr) {
+      setError(vErr.message);
+      return;
+    }
+    const porBloque = new Map(blocks.map((b) => [b.component_id, b]));
     const options: VersionOption[] = [];
-    for (const b of blocks) {
-      const { data: vs, error: vErr } = await supabase.rpc('catalog_list_component_versions', { p_component_id: b.component_id });
-      if (vErr) {
-        setError(vErr.message);
-        return;
-      }
-      for (const v of (vs ?? []) as ComponentVersion[]) {
-        if (v.status === 'deprecated') continue;
-        const variant = Object.keys(b.variant ?? {}).length ? ` ${JSON.stringify(b.variant)}` : '';
-        options.push({ id: v.id, label: `${b.name}${variant} · v${v.version} (${v.status})` });
-      }
+    for (const v of (vs ?? []) as (ComponentVersion & { component_id: string })[]) {
+      if (v.status === 'deprecated') continue;
+      const b = porBloque.get(v.component_id);
+      if (!b) continue;
+      const variant = Object.keys(b.variant ?? {}).length ? ` ${JSON.stringify(b.variant)}` : '';
+      options.push({ id: v.id, label: `${b.name}${variant} · v${v.version} (${v.status})` });
     }
     setVersionOptions(options);
   }, []);
@@ -152,15 +179,21 @@ export function CompositionsTab({ task, onChanged }: CompositionsTabProps) {
       setSelectedId(id);
       setIssues(null);
       setStep(EMPTY_STEP);
-      loadSlots(id);
     },
-    [loadSlots],
+    [setSelectedId],
   );
 
   // Se abre sola la primera composición (la más reciente de su clave): un clic menos.
   useEffect(() => {
     if (compositions && compositions.length > 0 && !selectedId) selectComposition(compositions[0].id);
   }, [compositions, selectedId, selectComposition]);
+
+  // Los pasos se cargan de la composición abierta, venga de un clic o de la URL. Cargarlos
+  // dentro del clic dejaba la tubería vacía al entrar por un enlace con ?comp= puesto.
+  useEffect(() => {
+    if (selectedId) loadSlots(selectedId);
+    else setSlots([]);
+  }, [selectedId, loadSlots]);
 
   async function createComposition(e: FormEvent) {
     e.preventDefault();

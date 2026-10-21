@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router';
+import { Link, NavLink, useNavigate, useSearchParams } from 'react-router';
 import { supabase } from '../lib/supabaseClient';
 import { PageHead } from '../components/PageHead';
 import { StatusPill } from '../components/StatusPill';
@@ -13,6 +13,8 @@ import type {
   JobRoleFull,
   JobRoleVersionSummary,
   JobRoleTaskRow,
+  ReadinessStage,
+  RoleReadinessRow,
   RiskLevel,
   Seniority,
   TaskSummary,
@@ -82,11 +84,17 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
   const navigate = useNavigate();
   const [selectedKey, setSelectedKey] = useState(initialKey);
   const [versions, setVersions] = useState<JobRoleVersionSummary[]>([]);
-  const [selectedVersionId, setSelectedVersionId] = useState('');
+  // La versión vive en la URL (?v=): un enlace a «el rol en v2» tiene que llevar a v2.
+  // Antes era useState, así que compartir la URL mandaba siempre a la última versión.
+  const [search, setSearch] = useSearchParams();
+  const [versionPedida, setVersionPedida] = useState(search.get('v'));
+  if (search.get('v') !== versionPedida) setVersionPedida(search.get('v'));
   const [role, setRole] = useState<JobRoleFull | null>(null);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [tenants, setTenants] = useState<TenantForRole[]>([]);
   const [tasks, setTasks] = useState<JobRoleTaskRow[]>([]);
+  // Qué le falta a cada tarea para estar montada. Es la lista de pendientes del catálogo.
+  const [readiness, setReadiness] = useState<RoleReadinessRow[]>([]);
   const [availableTasks, setAvailableTasks] = useState<AvailableTask[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,13 +109,26 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
 
   const [taskSearch, setTaskSearch] = useState('');
   const [taskSearchResults, setTaskSearchResults] = useState<TaskSummary[]>([]);
-  const [effectFilter, setEffectFilter] = useState('');
-  const [criticalityFilter, setCriticalityFilter] = useState('');
-  const [processFilter, setProcessFilter] = useState<string | null>(null);
-  const [patternFilter, setPatternFilter] = useState<string | null>(null);
+  // Los seis filtros viven en la URL. Eran useState, así que recargar, volver atrás o
+  // mandarle a alguien «mira las core irreversibles de este rol» no funcionaba.
+  const filtro = (key: string) => search.get(key) ?? '';
+  const setFiltro = (key: string, value: string | null) =>
+    setSearch(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) next.set(key, value);
+        else next.delete(key);
+        return next;
+      },
+      { replace: true },
+    );
 
-  const [tenantVersionFilter, setTenantVersionFilter] = useState('');
-  const [tenantStatusFilter, setTenantStatusFilter] = useState('');
+  const effectFilter = filtro('efecto');
+  const criticalityFilter = filtro('crit');
+  const processFilter = search.get('proc');
+  const patternFilter = search.get('pat');
+  const tenantVersionFilter = filtro('cv');
+  const tenantStatusFilter = filtro('ce');
 
   useEffect(() => {
     supabase.rpc('catalog_list_domains').then(({ data, error }) => {
@@ -129,8 +150,23 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
     }
     const rows = (data ?? []) as JobRoleVersionSummary[];
     setVersions(rows);
-    setSelectedVersionId(rows[0]?.id || '');
   }, []);
+
+  // ?v= manda; si no viene (o apunta a una versión que ya no existe), la última.
+  const selectedVersionId =
+    versions.find((v) => v.id === versionPedida)?.id ?? versions[0]?.id ?? '';
+
+  const setSelectedVersionId = useCallback(
+    (id: string) => {
+      setSearch((prev) => {
+        const next = new URLSearchParams(prev);
+        if (id) next.set('v', id);
+        else next.delete('v');
+        return next;
+      });
+    },
+    [setSearch],
+  );
 
   const loadTenants = useCallback(async (key: string) => {
     if (!key) return;
@@ -143,8 +179,6 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
     if (selectedKey) {
       loadVersions(selectedKey);
       loadTenants(selectedKey);
-      setTenantVersionFilter('');
-      setTenantStatusFilter('');
     }
   }, [selectedKey, loadVersions, loadTenants]);
 
@@ -160,6 +194,13 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
     setEditing(false);
   }, []);
 
+  const loadReadiness = useCallback(async (id: string) => {
+    if (!id) return;
+    const { data, error } = await supabase.rpc('catalog_role_readiness', { p_job_role_id: id });
+    if (error) setError(error.message);
+    else setReadiness((data ?? []) as RoleReadinessRow[]);
+  }, []);
+
   const loadTasks = useCallback(async (id: string) => {
     if (!id) return;
     const { data, error } = await supabase.rpc('catalog_list_job_role_tasks', { p_job_role_id: id });
@@ -171,11 +212,11 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
     if (selectedVersionId) {
       loadRole(selectedVersionId);
       loadTasks(selectedVersionId);
-      setEffectFilter('');
-      setCriticalityFilter('');
+    loadReadiness(selectedVersionId);
+      loadReadiness(selectedVersionId);
       setShowForkForm(false);
     }
-  }, [selectedVersionId, loadRole, loadTasks]);
+  }, [selectedVersionId, loadRole, loadTasks, loadReadiness]);
 
   useEffect(() => {
     if (!selectedVersionId) return;
@@ -211,6 +252,7 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
 
   async function saveRole() {
     if (!role || !form) return;
+    setError(null);
     setSaving(true);
     const { error } = await supabase.rpc('catalog_update_job_role', {
       p_id: role.id,
@@ -238,6 +280,7 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
 
   async function createNewVersion() {
     if (!role) return;
+    setError(null);
     const { data, error } = await supabase.rpc('catalog_create_job_role_version', { p_source_id: role.id });
     if (error) {
       setError(error.message);
@@ -249,6 +292,7 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
 
   async function forkRole() {
     if (!role || !forkDomainId || !forkKey.trim()) return;
+    setError(null);
     setForking(true);
     const { error } = await supabase.rpc('catalog_fork_job_role', {
       p_source_id: role.id,
@@ -268,6 +312,7 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
 
   async function addTask(task: TaskSummary) {
     if (!selectedVersionId) return;
+    setError(null);
     const { error } = await supabase.rpc('catalog_link_task_role', {
       p_job_role_id: selectedVersionId,
       p_task_id: task.id,
@@ -279,9 +324,11 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
     setTaskSearch('');
     setTaskSearchResults([]);
     loadTasks(selectedVersionId);
+    loadReadiness(selectedVersionId);
   }
 
   async function removeTask(taskId: string) {
+    setError(null);
     const { error } = await supabase.rpc('catalog_unlink_task_role', {
       p_job_role_id: selectedVersionId,
       p_task_id: taskId,
@@ -291,16 +338,17 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
       return;
     }
     loadTasks(selectedVersionId);
+    loadReadiness(selectedVersionId);
   }
 
   function editTenantVersion(tenant: TenantForRole) {
+    setError(null);
     const match = versions.find((v) => v.version === tenant.job_role_version);
     if (!match) {
       setError(`No se encontró la versión v${tenant.job_role_version} de este rol.`);
       return;
     }
-    setSelectedVersionId(match.id);
-    navigate(`/roles/${encodeURIComponent(selectedKey)}/ficha`);
+    navigate(`/roles/${encodeURIComponent(selectedKey)}/ficha?v=${encodeURIComponent(match.id)}`);
   }
 
   const linkedTaskIds = new Set(tasks.map((t) => t.task_id));
@@ -318,6 +366,13 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
       (!effectFilter || t.effect_classification === effectFilter) &&
       (!criticalityFilter || t.criticality === criticalityFilter),
   );
+
+  const readinessByTask = new Map(readiness.map((r) => [r.task_id, r]));
+
+  const montaje = {
+    conComposicion: readiness.filter((r) => r.composition_count > 0).length,
+    publicadas: readiness.filter((r) => r.published_count > 0).length,
+  };
 
   const taskSummary = {
     total: tasks.length,
@@ -346,7 +401,7 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
   return (
     <section>
       <PageHead
-        crumbs={[{ label: 'Construcción · paso 1' }, { label: 'Roles', to: '/roles' }]}
+        crumbs={[{ label: 'Construir' }, { label: 'Especialistas', to: '/roles' }]}
         title={
           role ? (
             <>
@@ -454,24 +509,32 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
           <>
             <section className="table-card">
               <div className="table-card__head">
-                <h2 className="table-card__title">Tareas de este rol · paso 2</h2>
+                <h2 className="table-card__title">Tareas de este rol</h2>
                 <p className="catalog-note">
-                  <strong>{taskSummary.total}</strong> tareas: {taskSummary.readOnly} read only, {taskSummary.reversible}{' '}
-                  reversibles, {taskSummary.irreversible} irreversibles · {taskSummary.core} core, {taskSummary.standard}{' '}
-                  standard, {taskSummary.peripheral} peripheral. Abre una tarea para enlazar sus componentes y
-                  composiciones en el contexto de este rol.
+                  <strong>{taskSummary.total}</strong> tareas · <strong>{montaje.conComposicion}</strong> con
+                  composición · <strong>{montaje.publicadas}</strong> publicadas. El rol no está listo hasta que
+                  todas tienen una composición publicada.
+                </p>
+                <p className="catalog-note">
+                  {taskSummary.readOnly} read only, {taskSummary.reversible} reversibles, {taskSummary.irreversible}{' '}
+                  irreversibles · {taskSummary.core} core, {taskSummary.standard} standard, {taskSummary.peripheral}{' '}
+                  peripheral.
                 </p>
               </div>
               <div className="table-card__foot inline-form">
                 <TaskTypeFilters
                   processId={processFilter}
                   pattern={patternFilter}
-                  onProcess={setProcessFilter}
-                  onPattern={setPatternFilter}
+                  onProcess={(v) => setFiltro('proc', v)}
+                  onPattern={(v) => setFiltro('pat', v)}
                 />
                 <label className="inline-field">
                   Efecto
-                  <select className="text-input" value={effectFilter} onChange={(e) => setEffectFilter(e.target.value)}>
+                  <select
+                    className="text-input"
+                    value={effectFilter}
+                    onChange={(e) => setFiltro('efecto', e.target.value || null)}
+                  >
                     <option value="">Todos</option>
                     {EFFECT_OPTIONS.map((o) => (
                       <option key={o} value={o}>
@@ -485,7 +548,7 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
                   <select
                     className="text-input"
                     value={criticalityFilter}
-                    onChange={(e) => setCriticalityFilter(e.target.value)}
+                    onChange={(e) => setFiltro('crit', e.target.value || null)}
                   >
                     <option value="">Todas</option>
                     {CRITICALITY_OPTIONS.map((o) => (
@@ -500,6 +563,7 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
                 <thead>
                   <tr>
                     <th>Tarea</th>
+                    <th>Montaje</th>
                     <th>Patrón</th>
                     <th>Efecto</th>
                     <th>Criticidad</th>
@@ -517,7 +581,7 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
                         <Fragment key={t.task_id}>
                           {showHeader && (
                             <tr className="data-table__group">
-                              <td colSpan={5} className="eyebrow">
+                              <td colSpan={6} className="eyebrow">
                                 {processLabel}
                               </td>
                             </tr>
@@ -526,11 +590,14 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
                             <td className="data-table__wrap">
                               <Link
                                 className="data-table__primary"
-                                to={`/tareas/${encodeURIComponent(t.task_id)}/componentes${role ? `?rol=${encodeURIComponent(role.id)}` : ''}`}
+                                to={`/tareas/${encodeURIComponent(t.task_id)}/composiciones${role ? `?rol=${encodeURIComponent(role.id)}` : ''}`}
                               >
                                 {t.statement}
                               </Link>
                               <span className="data-table__secondary">{t.task_code}</span>
+                            </td>
+                            <td>
+                              <StageCell row={readinessByTask.get(t.task_id)} />
                             </td>
                             <td className="mono">{t.primary_pattern ?? '—'}</td>
                             <td className="mono">{t.effect_classification}</td>
@@ -547,7 +614,7 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
                   })()}
                   {filteredTasks.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="data-table__empty">
+                      <td colSpan={6} className="data-table__empty">
                         {tasks.length === 0
                           ? 'Este rol no tiene tareas enlazadas todavía.'
                           : 'Ninguna tarea coincide con estos filtros.'}
@@ -828,7 +895,7 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
                   <select
                     className="text-input"
                     value={tenantVersionFilter}
-                    onChange={(e) => setTenantVersionFilter(e.target.value)}
+                    onChange={(e) => setFiltro('cv', e.target.value || null)}
                   >
                     <option value="">Todas</option>
                     {versions.map((v) => (
@@ -843,7 +910,7 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
                   <select
                     className="text-input"
                     value={tenantStatusFilter}
-                    onChange={(e) => setTenantStatusFilter(e.target.value)}
+                    onChange={(e) => setFiltro('ce', e.target.value || null)}
                   >
                     <option value="">Todos</option>
                     {TENANT_STATUS_OPTIONS.map((s) => (
@@ -887,7 +954,7 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
                   ))}
                   {filteredTenants.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="data-table__empty">
+                      <td colSpan={6} className="data-table__empty">
                         {tenants.length === 0
                           ? 'Ningún cliente tiene este rol contratado todavía.'
                           : 'Ningún cliente coincide con estos filtros.'}
@@ -901,5 +968,29 @@ export function RolePanel({ initialKey, tab }: RolePanelProps) {
         )}
       </div>
     </section>
+  );
+}
+
+const STAGE_COPY: Record<ReadinessStage, { label: string; tone: string; ayuda: string }> = {
+  lista: { label: 'Lista', tone: 'ok', ayuda: 'Tiene una composición publicada.' },
+  composicion_borrador: {
+    label: 'En borrador',
+    tone: 'warn',
+    ayuda: 'La composición existe pero no está publicada.',
+  },
+  sin_composicion: { label: 'Sin montar', tone: 'pending', ayuda: 'Clasificada, pero nadie ha montado su composición.' },
+  sin_patron: { label: 'Falta patrón', tone: 'pending', ayuda: 'Sin patrón de automatización no se sabe qué montar.' },
+  sin_proceso: { label: 'Falta proceso', tone: 'pending', ayuda: 'Sin proceso no se puede situar en el catálogo.' },
+};
+
+/** Qué le falta a esta tarea, en una palabra. Es lo que convierte la lista en cola de trabajo. */
+function StageCell({ row }: { row: RoleReadinessRow | undefined }) {
+  if (!row) return <span className="data-table__secondary">—</span>;
+  const copy = STAGE_COPY[row.stage];
+  return (
+    <span className={`pill pill--${copy.tone}`} title={copy.ayuda}>
+      {copy.label}
+      {row.stage === 'composicion_borrador' && row.step_count > 0 && ` · ${row.step_count} pasos`}
+    </span>
   );
 }

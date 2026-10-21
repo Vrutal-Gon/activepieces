@@ -13,7 +13,6 @@ interface NavItem {
   to: string;
   label: string;
   icon: string;
-  step?: number;
   superadminOnly?: boolean;
 }
 
@@ -53,22 +52,28 @@ const WORKSPACES: Record<Workspace, { label: string; hint: string; icon: string;
     home: '/roles',
     groups: [
       {
-        // En el orden en que se construye un especialista.
-        label: 'Construcción',
+        // La espina del catálogo: un rol es un conjunto de tareas, y cada tarea se monta con una composición.
+        label: 'Construir',
+        items: [{ to: '/roles', label: 'Especialistas', icon: '◆' }],
+      },
+      {
+        label: 'Biblioteca',
         items: [
-          { to: '/roles', label: 'Roles', icon: '◆', step: 1 },
-          { to: '/tareas', label: 'Tareas', icon: '☰', step: 2 },
-          { to: '/bloques', label: 'Bloques', icon: '▤', step: 3 },
-          { to: '/composiciones', label: 'Composiciones', icon: '⇶', step: 4 },
+          { to: '/tareas', label: 'Tareas', icon: '☰' },
+          { to: '/composiciones', label: 'Composiciones', icon: '⇶' },
+          { to: '/bloques', label: 'Bloques', icon: '▤' },
         ],
+      },
+      {
+        label: 'Entrada',
+        items: [{ to: '/importaciones', label: 'Importaciones', icon: '⇲' }],
       },
       {
         label: 'Referencias',
         items: [
-          { to: '/componentes', label: 'Componentes', icon: '⬡' },
-          { to: '/catalogo-kpis', label: 'KPIs y reportes', icon: '▦' },
           { to: '/sistemas', label: 'Stack / Sistemas', icon: '⧉' },
           { to: '/proveedores', label: 'Proveedores', icon: '◌' },
+          { to: '/catalogo-kpis', label: 'KPIs y reportes', icon: '▦' },
         ],
       },
       {
@@ -167,15 +172,9 @@ export function AppShell({ email, onSignOut }: AppShellProps) {
                 .filter((item) => !item.superadminOnly || isSuperadmin)
                 .map((item) => (
                   <NavLink key={item.to} to={item.to} className="side-nav__link" onClick={() => setNavOpen(false)}>
-                    {item.step ? (
-                      <span className="side-nav__step" aria-hidden="true">
-                        {item.step}
-                      </span>
-                    ) : (
-                      <span className="side-nav__icon" aria-hidden="true">
-                        {item.icon}
-                      </span>
-                    )}
+                    <span className="side-nav__icon" aria-hidden="true">
+                      {item.icon}
+                    </span>
                     {item.label}
                   </NavLink>
                 ))}

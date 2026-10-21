@@ -345,15 +345,55 @@ export interface FleetRow {
   flows_enabled: number;
 }
 
+export type TaskSource = 'onet' | 'apqc' | 'internal';
+
 export interface TaskListRow extends TaskSummary {
+  source: string;
   process_id: string | null;
   process_name: string | null;
   primary_pattern: string | null;
+  risk: string | null;
   status: string;
+  occupation_title: string | null;
+  /** 'L1'..'L4' en las filas importadas de APQC; null en el resto. */
+  apqc_level: string | null;
   role_count: number;
-  component_count: number;
+  /** Slots de sus composiciones. Sustituye al viejo component_count, que siempre era 0. */
+  step_count: number;
   composition_count: number;
   total_count: number;
+}
+
+/** Un valor posible de una faceta, con cuántas tareas daría. */
+export interface TaskFacet {
+  facet: string;
+  value: string | null;
+  label: string | null;
+  n: number;
+}
+
+export interface Occupation {
+  id: string;
+  source: string;
+  source_code: string;
+  title: string | null;
+  task_count: number;
+}
+
+export interface CompositionListRow {
+  id: string;
+  key: string;
+  version: number;
+  name: string;
+  pattern: string | null;
+  status: string;
+  slot_count: number;
+  /** Posiciones distintas. Un paso puede tener varias opciones por stack. */
+  step_count: number;
+  task_id: string;
+  task_code: string;
+  statement: string;
+  role_names: string | null;
 }
 
 export interface TaskRoleRow {
@@ -432,4 +472,64 @@ export interface StaffTicketMessage {
   author_label: string;
   body: string;
   created_at: string;
+}
+
+/** Dónde se monta un bloque: la composición, el paso y la tarea que lo usan. */
+export interface BlockUsageRow {
+  composition_id: string;
+  composition_name: string;
+  composition_status: string;
+  slot_key: string;
+  slot_position: number;
+  component_version: number;
+  version_status: string;
+  task_id: string;
+  task_code: string;
+  statement: string;
+  role_names: string | null;
+}
+
+export interface ContractUsageRow {
+  relation: 'produce' | 'consume';
+  component_id: string;
+  component_name: string;
+  comp_type: string;
+  version: number;
+  version_status: string;
+}
+
+export interface GlobalSearchHit {
+  kind: string;
+  label: string;
+  detail: string | null;
+  href: string;
+}
+
+/** Qué le falta a una tarea para estar montada dentro de un rol. */
+export type ReadinessStage =
+  | 'lista'
+  | 'composicion_borrador'
+  | 'sin_composicion'
+  | 'sin_patron'
+  | 'sin_proceso';
+
+export interface RoleReadinessRow {
+  task_id: string;
+  task_code: string;
+  statement: string;
+  process_name: string | null;
+  primary_pattern: string | null;
+  effect_classification: string;
+  criticality: string;
+  composition_count: number;
+  step_count: number;
+  published_count: number;
+  stage: ReadinessStage;
+}
+
+export interface RoleProgressRow {
+  role_key: string;
+  tasks: number;
+  with_composition: number;
+  published: number;
 }

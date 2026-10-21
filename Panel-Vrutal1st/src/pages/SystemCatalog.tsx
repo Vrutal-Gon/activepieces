@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import type { SystemOption } from '../lib/types';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { ExternalLink } from '../components/ExternalLink';
 import { PageHead } from '../components/PageHead';
 import '../styles/pages/catalog.css';
@@ -31,7 +31,17 @@ export function SystemCatalog() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
 
-  const [selectedOption, setSelectedOption] = useState<SystemOption | null>(null);
+  // Qué sistema está abierto va en ?sis=. Antes el detalle cambiaba la página entera sin
+  // tocar la URL, así que el botón atrás salía del catálogo en vez de volver a la lista.
+  const [search, setSearch] = useSearchParams();
+  const openId = search.get('sis');
+  const setOpenId = (id: string | null) =>
+    setSearch((prev) => {
+      const next = new URLSearchParams(prev);
+      if (id) next.set('sis', id);
+      else next.delete('sis');
+      return next;
+    });
   const [tenantsForOption, setTenantsForOption] = useState<TenantForSystemOption[]>([]);
 
   useEffect(() => {
@@ -50,6 +60,7 @@ export function SystemCatalog() {
 
   async function createOption(e: FormEvent) {
     e.preventDefault();
+    setError(null);
     const { error } = await supabase.rpc('catalog_create_system_option', {
       p_system_category: newOption.system_category.trim().toLowerCase(),
       p_name: newOption.name,
@@ -81,6 +92,7 @@ export function SystemCatalog() {
 
   async function saveEdit() {
     if (!editingId || !editForm) return;
+    setError(null);
     const { error } = await supabase.rpc('catalog_update_system_option', {
       p_id: editingId,
       p_system_category: editForm.system_category.trim().toLowerCase(),
@@ -100,6 +112,7 @@ export function SystemCatalog() {
   }
 
   async function deleteOption(id: string) {
+    setError(null);
     const { error } = await supabase.rpc('catalog_delete_system_option', { p_id: id });
     if (error) {
       setError(error.message);
@@ -108,14 +121,27 @@ export function SystemCatalog() {
     loadOptions();
   }
 
-  async function openDetail(o: SystemOption) {
-    setSelectedOption(o);
-    const { data, error } = await supabase.rpc('catalog_list_tenants_for_system_option', {
-      p_system_option_id: o.id,
-    });
-    if (error) setError(error.message);
-    else setTenantsForOption((data ?? []) as TenantForSystemOption[]);
-  }
+  // El detalle lo decide la URL, así que sus clientes se cargan en un efecto, no en el clic:
+  // si no, entrar por un enlace directo mostraba la ficha con la lista de clientes vacía.
+  const selectedOption = options.find((o) => o.id === openId) ?? null;
+
+  useEffect(() => {
+    if (!openId) {
+      setTenantsForOption([]);
+      return;
+    }
+    let vigente = true;
+    supabase
+      .rpc('catalog_list_tenants_for_system_option', { p_system_option_id: openId })
+      .then(({ data, error }) => {
+        if (!vigente) return;
+        if (error) setError(error.message);
+        else setTenantsForOption((data ?? []) as TenantForSystemOption[]);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [openId]);
 
   if (selectedOption) {
     const n = tenantsForOption.length;
@@ -131,7 +157,7 @@ export function SystemCatalog() {
             </>
           }
         >
-          <button type="button" className="btn btn--ghost" onClick={() => setSelectedOption(null)}>
+          <button type="button" className="btn btn--ghost" onClick={() => setOpenId(null)}>
             ← Todos los sistemas
           </button>
         </PageHead>
@@ -280,7 +306,7 @@ export function SystemCatalog() {
                 ) : (
                   <tr key={o.id}>
                     <td>
-                      <button type="button" className="btn-link" onClick={() => openDetail(o)}>
+                      <button type="button" className="btn-link" onClick={() => setOpenId(o.id)}>
                         {o.name}
                       </button>
                     </td>

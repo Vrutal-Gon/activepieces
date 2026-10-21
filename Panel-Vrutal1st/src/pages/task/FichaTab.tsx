@@ -1,12 +1,23 @@
 import { useState, type FormEvent } from 'react';
-import { updateTask } from '../../lib/api/catalog';
+import { linkTaskRole, updateTask } from '../../lib/api/catalog';
 import { ProcessOptions } from '../../components/ProcessOptions';
 import { StatusPill } from '../../components/StatusPill';
 import { COMPOSITION_PATTERNS } from '../../lib/types';
 import { PATTERN_COPY } from '../../lib/catalogCopy';
-import type { TaskDetail } from '../../lib/types';
+import type { Criticality, EffectClassification, TaskDetail } from '../../lib/types';
 
 const RIESGOS = ['low', 'medium', 'medium_high', 'high'] as const;
+const EFFECT_OPTIONS: EffectClassification[] = ['read_only', 'reversible', 'irreversible'];
+const CRITICALITY_OPTIONS: Criticality[] = ['core', 'standard', 'peripheral'];
+
+/** Rol desde el que se llegó (?rol=): su clasificación de esta tarea se edita aquí. */
+export interface TaskRoleContext {
+  jobRoleId: string;
+  roleName: string;
+  roleVersion: number;
+  effectClassification: EffectClassification;
+  criticality: Criticality;
+}
 
 const ESTADOS: { value: string; label: string; ayuda: string }[] = [
   { value: 'draft', label: 'Borrador', ayuda: 'Sin revisar. Es el estado de salida de toda tarea.' },
@@ -16,6 +27,7 @@ const ESTADOS: { value: string; label: string; ayuda: string }[] = [
 
 interface FichaTabProps {
   task: TaskDetail;
+  roleContext: TaskRoleContext | null;
   onChanged: () => void;
 }
 
@@ -27,7 +39,7 @@ interface FichaTabProps {
  * El `task_code` no se edita: es la identidad, opaca e inmutable. Tampoco `source` ni
  * `source_code`, que son la trazabilidad al origen.
  */
-export function FichaTab({ task, onChanged }: FichaTabProps) {
+export function FichaTab({ task, roleContext, onChanged }: FichaTabProps) {
   const [draft, setDraft] = useState({
     statement: task.statement,
     process_id: task.process_id ?? '',
@@ -76,7 +88,10 @@ export function FichaTab({ task, onChanged }: FichaTabProps) {
   }
 
   return (
-    <section className="table-card">
+    <div className="catalog-stack">
+      {roleContext && <RoleClassification task={task} context={roleContext} onChanged={onChanged} />}
+
+      <section className="table-card">
       <div className="table-card__head">
         <h2 className="table-card__title">Ficha</h2>
         <span className="data-table__secondary">
@@ -165,6 +180,90 @@ export function FichaTab({ task, onChanged }: FichaTabProps) {
           </button>
         </div>
       </form>
+      </section>
+    </div>
+  );
+}
+
+interface RoleClassificationProps {
+  task: TaskDetail;
+  context: TaskRoleContext;
+  onChanged: () => void;
+}
+
+/**
+ * Cuánto pesa esta tarea DENTRO de un rol concreto. Vive en `job_role_task`, no en la tarea:
+ * la misma tarea puede ser core en un rol y peripheral en otro.
+ */
+function RoleClassification({ task, context, onChanged }: RoleClassificationProps) {
+  const [valor, setValor] = useState({
+    effectClassification: context.effectClassification,
+    criticality: context.criticality,
+  });
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function cambiar(campo: 'effectClassification' | 'criticality', v: string) {
+    const siguiente = { ...valor, [campo]: v } as typeof valor;
+    const previo = valor;
+    setValor(siguiente);
+    setGuardando(true);
+    setError(null);
+    try {
+      await linkTaskRole(context.jobRoleId, task.id, siguiente.effectClassification, siguiente.criticality);
+      onChanged();
+    } catch (err) {
+      setValor(previo);
+      setError(err instanceof Error ? err.message : 'No se ha podido guardar la clasificación.');
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <section className="table-card">
+      <div className="table-card__head">
+        <h2 className="table-card__title">
+          En {context.roleName} v{context.roleVersion}
+          {guardando && ' · guardando…'}
+        </h2>
+        <p className="catalog-note">Se guarda solo para este rol. Otros roles mantienen la suya.</p>
+      </div>
+      <div className="table-card__foot">
+        <label className="inline-field">
+          Efecto
+          <select
+            className="text-input"
+            value={valor.effectClassification}
+            onChange={(e) => cambiar('effectClassification', e.target.value)}
+          >
+            {EFFECT_OPTIONS.map((o) => (
+              <option key={o} value={o}>
+                {o}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="inline-field">
+          Criticidad
+          <select
+            className="text-input"
+            value={valor.criticality}
+            onChange={(e) => cambiar('criticality', e.target.value)}
+          >
+            {CRITICALITY_OPTIONS.map((o) => (
+              <option key={o} value={o}>
+                {o}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      {error && (
+        <p className="notice notice--error" role="alert">
+          {error}
+        </p>
+      )}
     </section>
   );
 }

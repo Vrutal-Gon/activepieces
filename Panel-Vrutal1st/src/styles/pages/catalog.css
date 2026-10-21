@@ -414,3 +414,167 @@
 .checklist__form {
   margin-top: var(--space-2);
 }
+
+/* ---------------------------------------------------------------------
+   Navegación del catálogo: buscador, barra de filtros y tabla.
+
+   Los filtros van en horizontal, no en un rail lateral. El rail se llevaba 240 px de ancho
+   que le hacían falta al enunciado de la tarea: los textos de O*NET envolvían a tres líneas
+   y solo entraban seis filas de veinticinco en una pantalla de 1440.
+   --------------------------------------------------------------------- */
+
+/* .table-card__head es un bloque normal, así que buscador y recuento se apilaban. */
+.browse__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.browse__search {
+  flex: 1;
+  min-width: 12rem;
+  max-width: 28rem;
+}
+
+.browse__count {
+  flex: none;
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.filter-bar__group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.filter-bar__label {
+  flex: none;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.filter-bar__group--select select {
+  max-width: 14rem;
+  padding-block: var(--space-1);
+  font-size: 0.8125rem;
+}
+
+/* Un desplegable con filtro puesto tiene que distinguirse de uno en «Todos». */
+.filter-bar__group--select select[data-active='true'] {
+  color: var(--action-text);
+  border-color: var(--action);
+}
+
+/* Cuántas tareas da cada valor. Sin el número, filtrar sobre mil filas es ir a ciegas. */
+.chip__count {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  opacity: 0.65;
+}
+
+.chip[aria-pressed='true'] .chip__count {
+  opacity: 1;
+}
+
+.filter-bar__clear {
+  margin-left: auto;
+  font-size: 0.75rem;
+}
+
+/* Reparto de la tabla: el enunciado es lo único que se lee de verdad, así que se queda con
+   lo que sobra. Estado, Roles y Pasos no necesitan más de lo que miden. */
+.browse .data-table th:not(:first-child) {
+  width: 1%;
+  white-space: nowrap;
+}
+
+/* data-table__wrap topa a 32rem por defecto. En esta tabla el enunciado es la columna, así
+   que se le quita el tope y se lleva el ancho que sobre. */
+.browse .data-table td.data-table__wrap:first-child {
+  max-width: none;
+  min-width: 22rem;
+}
+
+/* Sin esto el nombre del proceso envuelve a dos líneas y es él, no el enunciado, quien
+   fija el alto de la fila. */
+.browse .data-table td:not(:first-child) {
+  white-space: nowrap;
+}
+
+@media (max-width: 60rem) {
+  /* Estrujar la tabla convertía el enunciado en una columna de diez líneas. Mejor que la
+     tabla conserve su ancho y se recorra en horizontal. */
+  .browse__scroll {
+    overflow-x: auto;
+  }
+
+  .browse__scroll .data-table {
+    min-width: 46rem;
+  }
+
+  .filter-bar {
+    gap: var(--space-3);
+  }
+
+  .filter-bar__group--select {
+    flex: 1 1 12rem;
+  }
+
+  .filter-bar__group--select select {
+    max-width: none;
+    width: 100%;
+  }
+}
+
+/* El hilo que se está siguiendo. Va pegado bajo la cabecera, no flotando. */
+.context-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.8125rem;
+  background: var(--action-subtle);
+  border-left: 2px solid var(--action);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.context-bar__label {
+  color: var(--text-secondary);
+}
+
+.context-bar__who {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.context-bar__hint {
+  color: var(--text-secondary);
+}
+
+.context-bar__clear {
+  margin-left: auto;
+  color: var(--action-text);
+}
+
+/* El avance del rol en su tarjeta: lo construido, no solo lo que existe. */
+.org__progress {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-secondary);
+}

@@ -5,17 +5,16 @@ import { useAsyncData } from '../lib/hooks/useAsyncData';
 import { PageHead, type Crumb } from '../components/PageHead';
 import { ErrorNotice, LoadingState } from '../components/StatusViews';
 import { StatusPill } from '../components/StatusPill';
-import { ComponentsTab, type TaskRoleContext } from './task/ComponentsTab';
+import { ContextBar } from '../components/ContextBar';
 import { CompositionsTab } from './task/CompositionsTab';
-import { FichaTab } from './task/FichaTab';
+import { FichaTab, type TaskRoleContext } from './task/FichaTab';
 import type { TaskTab } from './TaskList';
 import type { TaskRoleRow } from '../lib/types';
 import '../styles/pages/catalog.css';
 
 const TABS: { key: TaskTab; label: string }[] = [
-  { key: 'ficha', label: 'Ficha' },
-  { key: 'componentes', label: 'Componentes' },
   { key: 'composiciones', label: 'Composiciones' },
+  { key: 'ficha', label: 'Ficha' },
   { key: 'roles', label: 'Roles que la usan' },
 ];
 
@@ -65,7 +64,9 @@ export function TaskPanel({ taskId, tab }: TaskPanelProps) {
   );
 
   if (!isTaskTab(tab)) {
-    return <Navigate to={`/tareas/${encodeURIComponent(taskId)}/componentes${roleId ? `?rol=${roleId}` : ''}`} replace />;
+    return (
+      <Navigate to={`/tareas/${encodeURIComponent(taskId)}/composiciones${roleId ? `?rol=${roleId}` : ''}`} replace />
+    );
   }
   if (state.status === 'loading') return <LoadingState />;
   if (state.status === 'error') return <ErrorNotice error={state.error} onRetry={reload} />;
@@ -89,7 +90,6 @@ export function TaskPanel({ taskId, tab }: TaskPanelProps) {
   const search = roleId ? `?rol=${encodeURIComponent(roleId)}` : '';
   const tabCount: Record<TaskTab, number> = {
     ficha: 0,
-    componentes: counts.components,
     composiciones: counts.compositions,
     roles: roles.length,
   };
@@ -109,6 +109,15 @@ export function TaskPanel({ taskId, tab }: TaskPanelProps) {
         {task.process_name ?? 'Sin proceso'} · <span className="mono">{task.primary_pattern ?? 'sin patrón'}</span>
         {task.risk ? ` · riesgo ${task.risk}` : ''} <StatusPill status={task.status} />
       </p>
+
+      {roleRow && (
+        <ContextBar
+          label={`${roleRow.name} v${roleRow.version}`}
+          backTo={`/roles/${encodeURIComponent(roleRow.key)}`}
+          clearTo={`/tareas/${encodeURIComponent(task.id)}/${tab}`}
+          hint="la Ficha edita la clasificación de esta tarea en ese rol"
+        />
+      )}
 
       {roleId && !roleRow && (
         <p className="notice notice--info">
@@ -130,8 +139,7 @@ export function TaskPanel({ taskId, tab }: TaskPanelProps) {
         ))}
       </nav>
 
-      {tab === 'ficha' && <FichaTab task={task} onChanged={refresh} />}
-      {tab === 'componentes' && <ComponentsTab task={task} roleContext={roleContext} onChanged={refresh} />}
+      {tab === 'ficha' && <FichaTab task={task} roleContext={roleContext} onChanged={refresh} />}
       {tab === 'composiciones' && <CompositionsTab task={task} onChanged={refresh} />}
       {tab === 'roles' && <RolesTab taskId={task.id} roles={roles} activeRoleId={roleRow?.job_role_id ?? null} />}
     </section>
@@ -183,7 +191,7 @@ function RolesTab({ taskId, roles, activeRoleId }: RolesTabProps) {
                 ) : (
                   <Link
                     className="btn btn--sm btn--ghost"
-                    to={`/tareas/${encodeURIComponent(taskId)}/componentes?rol=${encodeURIComponent(r.job_role_id)}`}
+                    to={`/tareas/${encodeURIComponent(taskId)}/composiciones?rol=${encodeURIComponent(r.job_role_id)}`}
                   >
                     Trabajar desde este rol
                   </Link>

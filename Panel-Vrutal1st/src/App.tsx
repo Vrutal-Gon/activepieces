@@ -19,6 +19,8 @@ import { SystemCatalog } from './pages/SystemCatalog';
 import { TaskList } from './pages/TaskList';
 import { TaskPanel } from './pages/TaskPanel';
 import { TaskNew } from './pages/TaskNew';
+import { CompositionList } from './pages/CompositionList';
+import { ImportInbox } from './pages/ImportInbox';
 import { TicketsPage } from './pages/TicketsPage';
 import './App.css';
 
@@ -108,32 +110,14 @@ function App() {
           <Route path="roles/:roleKey/:tab?" element={<RoleDetailRoute />} />
           <Route
             path="tareas"
-            element={<TaskList target="componentes" crumbs={[{ label: 'Construcción · paso 2' }]} title="Tareas" />}
+            element={<TaskList target="composiciones" crumbs={[{ label: 'Biblioteca' }]} title="Tareas" />}
           />
           <Route path="tareas/nueva" element={<TaskNew />} />
           <Route path="tareas/:taskId/:tab?" element={<TaskDetailRoute />} />
-          <Route
-            path="componentes"
-            element={
-              <TaskList
-                target="componentes"
-                crumbs={[{ label: 'Referencias' }]}
-                title="Componentes"
-                intro="Los componentes se enlazan en la ficha de cada tarea. Elige la tarea para ver o enlazar los suyos."
-              />
-            }
-          />
-          <Route
-            path="composiciones"
-            element={
-              <TaskList
-                target="composiciones"
-                crumbs={[{ label: 'Construcción · paso 4' }]}
-                title="Composiciones"
-                intro="Cada composición realiza una tarea. Elige la tarea para ver o crear sus composiciones."
-              />
-            }
-          />
+          {/* Los componentes son los bloques: un único sitio donde viven. */}
+          <Route path="componentes" element={<Navigate to="/bloques" replace />} />
+          <Route path="composiciones" element={<CompositionList />} />
+          <Route path="importaciones" element={<ImportInbox />} />
           <Route path="bloques" element={<BlockLibrary />} />
           <Route path="sistemas" element={<SystemCatalog />} />
           <Route path="proveedores" element={<ProviderCatalog />} />
