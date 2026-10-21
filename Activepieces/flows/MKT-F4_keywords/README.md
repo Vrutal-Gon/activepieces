@@ -44,7 +44,7 @@ queda vacío, el flujo no escribe nada: el paso «Ordena» falla a propósito.
 > Lo que sí para el flujo es que la tabla no exista (cliente sin el cambio `2026-10-20` aplicado):
 > ahí la función responde 500 y debe fallar en voz alta.
 >
-> **Probado en vivo el 2026-10-21** (importado, token puesto y publicado): ejecución `ok` en
+> **Ejecutado de verdad el 2026-10-21** (importado y con el token puesto; su disparador es de programación, así que la ejecución `TESTING` escribió de verdad): ejecución `ok` en
 > `run_log`, 63 keywords entregadas y 1 descartada, 1.601/5.642 tokens — el `tokens_in` sube de
 > 1.134 a 1.601 frente al 2026-10-19 por las reglas de SEM del *system*, aunque la lista venga
 > vacía. Lo que esa prueba **no** ejerce: `mkt_sem_strategy` tiene 0 filas, así que la rama con
@@ -102,6 +102,10 @@ esos dos pasos.
 2. **En VrutalOS**: el especialista SEO/SEM tiene la pestaña **Keywords** con N filas en estado
    **propuesta**, y se pueden aprobar o rechazar. En **Consumo** aparece la ejecución.
 3. **Publicar.** Desde entonces corre el día 1 de cada mes a las 08:00 (Madrid).
+   **PENDIENTE a 2026-10-21**: comprobado contra la base de Activepieces, el flujo está `DISABLED`
+   y **sin versión publicada** (`publishedVersionId` nulo). Ha ejecutado bien —sus 63 keywords
+   están entregadas— pero esa fue una ejecución de prueba lanzada a mano. Tal como está **no se
+   disparará el día 1**. Publicarlo es lo único que falta.
 4. Comprobación de que de verdad se fue de Sheets: la ejecución no toca ninguna pestaña, y en la
    versión publicada no queda ningún paso con `piece-google-sheets`.
 
