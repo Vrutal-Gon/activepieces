@@ -109,6 +109,23 @@ Dos cosas que parecen errores y no lo son:
 
 `job_role_prompt` es la joya: prompt maestro versionado, **solo superadmin**.
 
+**Modo pre-live (migración 040, 2026-10-19).** Lo publicado en el catálogo es inmutable: no se
+edita, no vuelve a draft y no se borra. Esa regla es correcta con clientes dentro y un estorbo
+mientras el catálogo busca su forma —cada flujo que se migra deja atrás bloques y composiciones
+que ya no describen nada, y un catálogo que acumula mentiras no sirve para lo único que sirve:
+saber qué hay montado. Así que hay un interruptor de un solo registro, `catalog.release_gate`, y
+una función `catalog.is_prelive()` que consultan los cuatro guardianes: en pre-live se puede
+borrar y rehacer, también desde el panel. No se quita ninguna regla: se declara una excepción con
+fecha de caducidad.
+
+**La puerta no se puede olvidar:** `is_prelive()` devuelve `false` en cuanto exista un tenant que
+no sea interno, por mucho que el interruptor siga encendido, y `catalog_set_prelive(true, …)` se
+niega a encenderlo si ya hay uno. El primer cliente real lo apaga solo. Para limpiar hay dos
+funciones, ambas solo superadmin y solo en pre-live: `catalog_purge_task(task_code)` (borra sus
+composiciones y slots y devuelve la tarea a draft, sin tocar bloques que puedan estar
+compartidos) y `catalog_purge_orphan_blocks(dry_run)` (barre versiones y bloques que ya no usa
+nadie; **en seco por defecto**).
+
 ### 3.2 `public` — la operación de Vrutal
 
 ```
@@ -499,6 +516,9 @@ WhatsApp como el que falta.
    `*.env.example`.
 9. **No se documenta un proceso como «listo» hasta haberlo ejecutado de verdad** (metodología de
    LAB15: Audit → Report → Design → Test → Deploy → Evolve).
+10. **Mientras el catálogo esté en pre-live, todo se puede borrar: úsalo.** Un bloque o una
+    composición que ya no describe lo que corre no se deja «por si acaso», se borra. Y
+    **apagar el pre-live es parte del alta del primer cliente**, no un detalle posterior.
 
 ---
 
