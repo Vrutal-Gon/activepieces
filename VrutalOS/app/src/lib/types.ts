@@ -1,4 +1,4 @@
-export type ProfileRole = 'client_admin' | 'client_manager' | 'client_user';
+export type ProfileRole = 'client_admin' | 'client_marketing_admin' | 'client_user';
 
 export interface Profile {
   id: string;
@@ -109,4 +109,94 @@ export interface Specialist {
   phase: string;
   autonomy_level: string;
   status: string;
+}
+
+// ── Scope de negocio (lo completa el Admin de Marketing; los flujos lo leen) ──────────────
+/** Origen de una fila: lo que empuja Vrutal desde su auditoría o lo que añade el cliente. */
+export type MktSource = 'vrutal' | 'cliente';
+
+/** Bloques de campo/valor. La lista de campos la define Vrutal (`mkt_input_field`). */
+export type MktInputKey = 'icp' | 'brand_voice' | 'strategy';
+
+export interface MktInputField {
+  input_key: MktInputKey;
+  field_key: string;
+  label: string;
+  /** Si es true, el campo admite varias filas (p. ej. `dolor`); si no, una sola. */
+  multi: boolean;
+  position: number;
+  help: string | null;
+}
+
+export interface MktInputValue {
+  id: string;
+  input_key: MktInputKey;
+  field_key: string;
+  value: string;
+  source: MktSource;
+  position: number;
+}
+
+export type MktChannel = 'seo' | 'sem' | 'email' | 'linkedin' | 'social' | 'web' | 'other';
+export type MktPeriod = 'semanal' | 'mensual' | 'trimestral';
+
+export interface MktChannelTarget {
+  id: string;
+  channel: MktChannel;
+  metric: string;
+  target: string;
+  period: MktPeriod | null;
+  source: MktSource;
+}
+
+export interface MktCompetitor {
+  id: string;
+  name: string;
+  website: string | null;
+  notes: string | null;
+  priority: number;
+  source: MktSource;
+}
+
+export interface MktFocusProduct {
+  id: string;
+  name: string;
+  description: string | null;
+  price_note: string | null;
+  priority: number;
+  status: 'activo' | 'pausado';
+  source: MktSource;
+}
+
+/**
+ * Estrategia SEM: lista cerrada de objetivos PPC genéricos, no texto libre. Sustituye al campo
+ * `strategy.foco_sem` (cambio 2026-10-20_mkt_sem_strategy.sql). Aquí no hay métrica a propósito:
+ * la métrica y el número viven en `mkt_channel_target`.
+ */
+export type MktSemObjective =
+  | 'crecimiento_marca'
+  | 'generar_leads'
+  | 'incrementar_roi'
+  | 'incrementar_ctr'
+  | 'reducir_cac'
+  | 'empuje_producto';
+
+export type MktSemStatus = 'planificada' | 'activa' | 'pausada';
+export type MktCurrency = 'EUR' | 'USD' | 'GBP';
+
+export interface MktSemStrategy {
+  id: string;
+  objective: MktSemObjective;
+  /** Vigencia, en ISO (AAAA-MM-DD). `ends_on` nulo = abierta. */
+  starts_on: string;
+  ends_on: string | null;
+  budget_monthly: number | null;
+  currency: MktCurrency;
+  /** Obligatorio cuando el objetivo es `empuje_producto` (lo exige un check en la base). */
+  focus_product_id: string | null;
+  geo: string | null;
+  landing_url: string | null;
+  status: MktSemStatus;
+  notes: string | null;
+  source: MktSource;
 }

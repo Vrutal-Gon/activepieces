@@ -25,3 +25,17 @@ export function formatDateTime(iso: string | null): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? '—' : DATE_TIME.format(d);
 }
+
+const MESES_CORTO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+/**
+ * «20 oct 2026» a partir de una columna `date` (ISO sin hora). No usa `new Date()` a propósito:
+ * `new Date('2026-10-20')` se interpreta en UTC y en un huso negativo devuelve el día anterior.
+ * Si la cadena no tiene forma de fecha se devuelve tal cual: nunca se inventa una.
+ */
+export function formatDateOnly(iso: string | null): string {
+  if (!iso) return '';
+  const t = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!t) return iso;
+  return `${Number(t[3])} ${MESES_CORTO[Number(t[2]) - 1]} ${t[1]}`;
+}

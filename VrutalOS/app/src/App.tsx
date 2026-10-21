@@ -13,7 +13,9 @@ import { IntegrationsPage } from './pages/IntegrationsPage';
 import { UsagePage } from './pages/UsagePage';
 import { ErrorNotice, LoadingState } from './components/StatusViews';
 import { LoginForm } from './pages/LoginForm';
+import { NegocioPage } from './pages/NegocioPage';
 import { PendingPage } from './pages/PendingPage';
+import { canEditScope } from './lib/nav';
 import { SetNewPasswordForm } from './pages/SetNewPasswordForm';
 import { SpecialistDetail } from './pages/SpecialistDetail';
 import { SpecialistList } from './pages/SpecialistList';
@@ -131,6 +133,7 @@ function Layouts({ profile, email, onSignOut }: LayoutsProps) {
         {isAdmin && <Route path="admin/integraciones" element={<IntegrationsPage />} />}
         {isAdmin && <Route path="admin/consumo" element={<UsagePage />} />}
         {isAdmin && <Route path="soporte" element={<SupportPage />} />}
+        {canEditScope(profile.role) && <Route path="negocio" element={<NegocioPage profile={profile} />} />}
         <Route path="aprobaciones" element={<ApprovalsPage profile={profile} />} />
         <Route path="especialistas" element={<SpecialistList profile={profile} />} />
         <Route path="especialistas/:id" element={<SpecialistDetail profile={profile} />} />

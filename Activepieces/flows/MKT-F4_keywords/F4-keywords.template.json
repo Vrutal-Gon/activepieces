@@ -1,8 +1,8 @@
 {
   "name": "MKT-F4 · Keywords por dolor del ICP",
   "type": "SHARED",
-  "summary": "search_marketing · TSK-000161 · Recibe → Consulta perfil → Decide (Claude) → Ordena KeywordSet → Ejecuta hoja → Deja rastro",
-  "description": "Vrutal Labs · Marketing. Ver Activepieces/flows/MARKETING_flujos_v0.1.md (F4).",
+  "summary": "search_marketing · TSK-000161 · Recibe → Consulta perfil (VrutalOS) → Consulta estrategia SEM → Clave → Claude (API) → Ordena → Entrega (work_item) → Deja rastro (run_log)",
+  "description": "Vrutal Labs · Marketing. Escribe en VrutalOS, no en Google Sheets: el perfil lo lee de mkt_input_value y las keywords las entrega como work_item para que el cliente las apruebe.",
   "tags": [
     "vrutal",
     "marketing",
@@ -15,8 +15,7 @@
   "categories": [],
   "pieces": [
     "@activepieces/piece-schedule",
-    "@activepieces/piece-google-sheets",
-    "@activepieces/piece-claude"
+    "@activepieces/piece-http"
   ],
   "flows": [
     {
@@ -39,24 +38,48 @@
         },
         "nextAction": {
           "name": "step_1",
+          "displayName": "Consulta · perfil e ICP (VrutalOS)",
           "type": "PIECE",
-          "valid": false,
+          "valid": true,
           "skip": false,
-          "displayName": "Consulta · perfil del cliente (hoja Perfil)",
           "settings": {
-            "pieceName": "@activepieces/piece-google-sheets",
-            "pieceVersion": "0.16.4",
-            "actionName": "get-many-rows",
-            "propertySettings": {},
+            "pieceName": "@activepieces/piece-http",
+            "pieceVersion": "0.11.19",
+            "actionName": "send_request",
+            "propertySettings": {
+              "body": {
+                "type": "MANUAL",
+                "schema": {
+                  "data": {
+                    "type": "JSON",
+                    "required": true,
+                    "displayName": "JSON Body"
+                  }
+                }
+              }
+            },
             "input": {
-              "includeTeamDrives": false,
-              "spreadsheetId": null,
-              "sheetId": null,
-              "first_row_headers": true
+              "method": "POST",
+              "url": "https://rgauumxztblwurzebmsa.supabase.co/functions/v1/flow-input-read",
+              "headers": {
+                "Content-Type": "application/json",
+                "X-AP-Token": "PENDIENTE_GENERAR_SECRETO_AP_INTEGRATION_TOKEN"
+              },
+              "queryParams": {},
+              "authType": "NONE",
+              "body_type": "json",
+              "body": {
+                "data": {
+                  "job_role_key": "search_marketing",
+                  "source": "icp"
+                }
+              },
+              "response_is_binary": false,
+              "followRedirects": true
             },
             "errorHandlingOptions": {
               "retryOnFailure": {
-                "value": false
+                "value": true
               },
               "continueOnFailure": {
                 "value": false
@@ -64,23 +87,45 @@
             }
           },
           "nextAction": {
-            "name": "step_2",
+            "name": "step_7",
+            "displayName": "Consulta · estrategia SEM (VrutalOS)",
             "type": "PIECE",
-            "valid": false,
+            "valid": true,
             "skip": false,
-            "displayName": "Decide · keywords por dolor (Claude)",
             "settings": {
-              "pieceName": "@activepieces/piece-claude",
-              "pieceVersion": "0.5.0",
-              "actionName": "ask_claude",
-              "propertySettings": {},
+              "pieceName": "@activepieces/piece-http",
+              "pieceVersion": "0.11.19",
+              "actionName": "send_request",
+              "propertySettings": {
+                "body": {
+                  "type": "MANUAL",
+                  "schema": {
+                    "data": {
+                      "type": "JSON",
+                      "required": true,
+                      "displayName": "JSON Body"
+                    }
+                  }
+                }
+              },
               "input": {
-                "model": "claude-sonnet-5-5",
-                "systemPrompt": "Eres el Especialista SEO/SEM de Vrutal Labs. Tarea TSK-000161: construir el KeywordSet por dolor del ICP.\nReglas:\n- Usa SOLO los campos del perfil que recibes. No inventes sectores, cifras ni competidores.\n- Cada fila del perfil con campo \"dolor\" o \"miedo\" genera keywords. Cada keyword nace de ese dolor o miedo, tal como la buscaría quien lo sufre, no como la describiría una empresa de tecnología.\n- Genera keywords para cada idioma de las filas \"idioma\" (es, en). Escribe cada una de forma nativa en su idioma; no traduzcas.\n- Los miedos y riesgos de la IA son un tema válido, solo con intent informational (entender el riesgo). Prohibido: keywords de compra o adopción de IA (implementar, contratar, comprar) y los términos \"chatbot\" y \"bot\".\n- intent: informational (quiere entender), commercial (compara soluciones) o transactional (quiere contratar).\n- icp_pain: copia tal cual el texto del dolor o miedo del perfil del que nace.\n- Entre 15 y 40 keywords por idioma, sin duplicados.\nResponde SOLO con JSON, sin texto alrededor, con esta forma exacta:\n{\"keywords\":[{\"keyword\":\"...\",\"icp_pain\":\"...\",\"intent\":\"informational|commercial|transactional\",\"idioma\":\"es|en\"}]}",
-                "maxTokens": 8000,
-                "prompt": "Perfil estructurado del cliente (filas campo/valor):\n{{step_1}}\n\nConstruye el KeywordSet.",
-                "roles": [],
-                "thinkingMode": false
+                "method": "POST",
+                "url": "https://rgauumxztblwurzebmsa.supabase.co/functions/v1/flow-input-read",
+                "headers": {
+                  "Content-Type": "application/json",
+                  "X-AP-Token": "PENDIENTE_GENERAR_SECRETO_AP_INTEGRATION_TOKEN"
+                },
+                "queryParams": {},
+                "authType": "NONE",
+                "body_type": "json",
+                "body": {
+                  "data": {
+                    "job_role_key": "search_marketing",
+                    "source": "sem_strategy"
+                  }
+                },
+                "response_is_binary": false,
+                "followRedirects": true
               },
               "errorHandlingOptions": {
                 "retryOnFailure": {
@@ -92,23 +137,48 @@
               }
             },
             "nextAction": {
-              "name": "step_3",
-              "type": "CODE",
+              "name": "step_2",
+              "displayName": "Consulta · clave de Anthropic (Vault)",
+              "type": "PIECE",
               "valid": true,
               "skip": false,
-              "displayName": "Ordena · a KeywordSet",
               "settings": {
-                "input": {
-                  "claudeText": "{{step_2}}",
-                  "runDate": "{{trigger.timestamp}}"
+                "pieceName": "@activepieces/piece-http",
+                "pieceVersion": "0.11.19",
+                "actionName": "send_request",
+                "propertySettings": {
+                  "body": {
+                    "type": "MANUAL",
+                    "schema": {
+                      "data": {
+                        "type": "JSON",
+                        "required": true,
+                        "displayName": "JSON Body"
+                      }
+                    }
+                  }
                 },
-                "sourceCode": {
-                  "code": "/* vrutal-block {\n  \"block\": \"Ordena · a KeywordSet\",\n  \"kind\": \"normalize\",\n  \"variant\": {},\n  \"consumes\": [\"texto de Claude con JSON\"],\n  \"produces\": \"KeywordSet@1\",\n  \"inputs\": { \"claudeText\": \"{{step_2}}\", \"runDate\": \"{{trigger.timestamp}}\" }\n} */\n// Paso Code de Activepieces. Convierte la respuesta de Claude en filas KeywordSet válidas (es / en).\n// Fail-closed: si la respuesta no trae JSON utilizable, el paso falla y nada se escribe en la hoja.\n\ntype Intent = 'informational' | 'commercial' | 'transactional';\ntype Idioma = 'es' | 'en';\nconst INTENTS: Intent[] = ['informational', 'commercial', 'transactional'];\nconst IDIOMAS: Idioma[] = ['es', 'en'];\nconst MAX_ROWS = 100; // techo por ejecución: evita que una respuesta desbocada llene la hoja\n\n// Reglas de marca (LAB 10 cap. 2, LAB 11): nada de bots; la IA solo como miedo o riesgo (informational),\n// nunca como solución que se compra o se implanta.\nconst BOTS = /\\b(chatbots?|bots?)\\b/i;\nconst IA = /\\b(ia|ai|inteligencia artificial|artificial intelligence)\\b/i;\nconst COMPRA_IA = /\\b(implementar|implantar|implementaci[oó]n|contratar|comprar|adoptar|implement|implementation|adopt|hire|buy|software|herramientas?|tools?)\\b/i;\n\nconst clean = (v: unknown, max = 200) =>\n  String(v ?? '')\n    .replace(/[\\u0000-\\u001f]/g, ' ')\n    .replace(/^[=+\\-@]/, \"'$&\") // anti fórmula: una celda nunca empieza por = + - @\n    .trim()\n    .slice(0, max);\n\nexport const code = async (inputs: { claudeText: unknown; runDate?: string }) => {\n  const raw = typeof inputs.claudeText === 'string' ? inputs.claudeText : JSON.stringify(inputs.claudeText ?? '');\n  // Claude a veces envuelve el JSON en ```json … ```: nos quedamos con el primer objeto.\n  const start = raw.indexOf('{');\n  const end = raw.lastIndexOf('}');\n  if (start < 0 || end <= start) throw new Error('La respuesta de Claude no contiene JSON');\n\n  let parsed: { keywords?: unknown };\n  try {\n    parsed = JSON.parse(raw.slice(start, end + 1));\n  } catch {\n    throw new Error('El JSON de Claude no es válido');\n  }\n  const list = Array.isArray(parsed.keywords) ? parsed.keywords : [];\n\n  const seen = new Set<string>();\n  const date = (inputs.runDate ? new Date(inputs.runDate) : new Date()).toISOString().slice(0, 10);\n  const rows = [];\n  let discarded = 0;\n  for (const item of list as Record<string, unknown>[]) {\n    const keyword = clean(item?.keyword, 120).toLowerCase();\n    const idioma = String(item?.idioma ?? '').trim().toLowerCase() as Idioma;\n    const intent = INTENTS.includes(item?.intent as Intent) ? (item.intent as Intent) : 'informational';\n    const key = `${idioma}|${keyword}`;\n    const breaksBrand =\n      BOTS.test(keyword) || (IA.test(keyword) && (intent !== 'informational' || COMPRA_IA.test(keyword)));\n    if (!keyword || !IDIOMAS.includes(idioma) || seen.has(key) || breaksBrand) {\n      discarded++;\n      continue;\n    }\n    seen.add(key);\n    rows.push({\n      fecha: date,\n      keyword,\n      icp_pain: clean(item?.icp_pain),\n      intent,\n      monthly_volume: '', // sin cuenta de Google Ads todavía: el volumen queda vacío\n      difficulty: '',\n      owner: intent === 'transactional' ? 'sem' : 'seo',\n      estado: 'propuesta',\n      idioma,\n    });\n    if (rows.length >= MAX_ROWS) break;\n  }\n  if (rows.length === 0) throw new Error('Claude no devolvió ninguna keyword utilizable');\n\n  return { rows, count: rows.length, discarded, rows_json: JSON.stringify(rows) };\n};\n",
-                  "packageJson": "{}"
+                "input": {
+                  "method": "POST",
+                  "url": "https://rgauumxztblwurzebmsa.supabase.co/functions/v1/integration-get-key",
+                  "headers": {
+                    "Content-Type": "application/json",
+                    "X-AP-Token": "PENDIENTE_GENERAR_SECRETO_AP_INTEGRATION_TOKEN"
+                  },
+                  "queryParams": {},
+                  "authType": "NONE",
+                  "body_type": "json",
+                  "body": {
+                    "data": {
+                      "provider": "anthropic"
+                    }
+                  },
+                  "response_is_binary": false,
+                  "followRedirects": true
                 },
                 "errorHandlingOptions": {
                   "retryOnFailure": {
-                    "value": false
+                    "value": true
                   },
                   "continueOnFailure": {
                     "value": false
@@ -116,31 +186,57 @@
                 }
               },
               "nextAction": {
-                "name": "step_4",
+                "name": "step_6",
+                "displayName": "Decide · keywords por dolor (Claude por API)",
                 "type": "PIECE",
-                "valid": false,
+                "valid": true,
                 "skip": false,
-                "displayName": "Ejecuta · escribir KeywordSet",
                 "settings": {
-                  "pieceName": "@activepieces/piece-google-sheets",
-                  "pieceVersion": "0.16.4",
-                  "actionName": "google-sheets-insert-multiple-rows",
-                  "propertySettings": {},
+                  "pieceName": "@activepieces/piece-http",
+                  "pieceVersion": "0.11.19",
+                  "actionName": "send_request",
+                  "propertySettings": {
+                    "body": {
+                      "type": "MANUAL",
+                      "schema": {
+                        "data": {
+                          "type": "JSON",
+                          "required": true,
+                          "displayName": "JSON Body"
+                        }
+                      }
+                    }
+                  },
                   "input": {
-                    "includeTeamDrives": false,
-                    "spreadsheetId": null,
-                    "sheetId": null,
-                    "input_type": "json",
-                    "values": {
-                      "values": "{{step_3.rows}}"
+                    "method": "POST",
+                    "url": "https://api.anthropic.com/v1/messages",
+                    "headers": {
+                      "Content-Type": "application/json",
+                      "x-api-key": "{{step_2.body.key}}",
+                      "anthropic-version": "2023-06-01"
                     },
-                    "overwrite": false,
-                    "check_for_duplicate": false,
-                    "headerRow": 1
+                    "queryParams": {},
+                    "authType": "NONE",
+                    "body_type": "json",
+                    "body": {
+                      "data": {
+                        "model": "claude-sonnet-5-5",
+                        "max_tokens": 8000,
+                        "system": "Eres el Especialista SEO/SEM de Vrutal Labs. Tarea TSK-000161: construir el KeywordSet por dolor del ICP.\nReglas:\n- Usa SOLO los campos del perfil que recibes. No inventes sectores, cifras ni competidores.\n- Cada fila del perfil con campo \"dolor\" o \"miedo\" genera keywords. Cada keyword nace de ese dolor o miedo, tal como la buscaría quien lo sufre, no como la describiría una empresa de tecnología.\n- Genera keywords para cada idioma de las filas \"idioma\" (es, en). Escribe cada una de forma nativa en su idioma; no traduzcas.\n- Los miedos y riesgos de la IA son un tema válido, solo con intent informational (entender el riesgo). Prohibido: keywords de compra o adopción de IA (implementar, contratar, comprar) y los términos \"chatbot\" y \"bot\".\n- intent: informational (quiere entender), commercial (compara soluciones) o transactional (quiere contratar).\n- icp_pain: copia tal cual el texto del dolor o miedo del perfil del que nace.\n- Estrategia SEM: llega como una lista aparte. Si viene VACÍA, el cliente no tiene SEM activo: ignórala y no inventes ninguna. Si trae filas, cada una lleva objective, starts_on, ends_on, budget_monthly, currency, geo, landing_url, status, notes y focus_product (el nombre del producto que se empuja). Cuentan solo las filas con status \"activa\" o \"planificada\".\n- Qué cambia con ella, sin saltarte ninguna regla de arriba: con generar_leads o reducir_cac, prioriza intent commercial y transactional; con crecimiento_marca, informational; con incrementar_ctr o incrementar_roi, keywords específicas y largas antes que genéricas; con empuje_producto, añade keywords del producto de focus_product, siempre atadas al dolor del que nacen y sin inventar nombres ni características que el producto no traiga.\n- El geo de la estrategia decide en qué idioma pesa más el conjunto, pero NUNCA añade un idioma que no esté en las filas \"idioma\" del perfil.\n- La estrategia no crea dolores: cada keyword sigue naciendo de un dolor o miedo del perfil, e icp_pain sigue siendo obligatorio.\n- Entre 15 y 40 keywords por idioma, sin duplicados.\nResponde SOLO con JSON, sin texto alrededor, con esta forma exacta:\n{\"keywords\":[{\"keyword\":\"...\",\"icp_pain\":\"...\",\"intent\":\"informational|commercial|transactional\",\"idioma\":\"es|en\"}]}",
+                        "messages": [
+                          {
+                            "role": "user",
+                            "content": "Perfil estructurado del cliente (filas campo/valor):\n{{step_1.body.rows}}\n\nEstrategia SEM vigente (puede venir vacía: entonces este cliente no hace SEM):\n{{step_7.body.rows}}\n\nConstruye el KeywordSet."
+                          }
+                        ]
+                      }
+                    },
+                    "response_is_binary": false,
+                    "followRedirects": true
                   },
                   "errorHandlingOptions": {
                     "retryOnFailure": {
-                      "value": false
+                      "value": true
                     },
                     "continueOnFailure": {
                       "value": false
@@ -148,28 +244,19 @@
                   }
                 },
                 "nextAction": {
-                  "name": "step_5",
-                  "type": "PIECE",
-                  "valid": false,
+                  "name": "step_3",
+                  "type": "CODE",
+                  "valid": true,
                   "skip": false,
-                  "displayName": "Deja rastro · hoja Rastro",
+                  "displayName": "Ordena · a KeywordSet",
                   "settings": {
-                    "pieceName": "@activepieces/piece-google-sheets",
-                    "pieceVersion": "0.16.4",
-                    "actionName": "insert_row",
-                    "propertySettings": {},
                     "input": {
-                      "includeTeamDrives": false,
-                      "spreadsheetId": null,
-                      "sheetId": null,
-                      "first_row_headers": true,
-                      "values": {
-                        "A": "{{trigger.timestamp}}",
-                        "B": "MKT-F4 keywords",
-                        "C": "TSK-000161",
-                        "D": "ok",
-                        "E": "{{step_3.count}} keywords propuestas, {{step_3.discarded}} descartadas"
-                      }
+                      "claudeBody": "{{step_6.body}}",
+                      "runDate": "{{trigger.timestamp}}"
+                    },
+                    "sourceCode": {
+                      "code": "// Paso Code de Activepieces. Convierte la respuesta de Claude en filas KeywordSet válidas (es / en).\n// Fail-closed: si la respuesta no trae JSON utilizable, el paso falla y nada se escribe en la hoja.\n\ntype Intent = 'informational' | 'commercial' | 'transactional';\ntype Idioma = 'es' | 'en';\nconst INTENTS: Intent[] = ['informational', 'commercial', 'transactional'];\nconst IDIOMAS: Idioma[] = ['es', 'en'];\nconst MAX_ROWS = 100; // techo por ejecución: evita que una respuesta desbocada llene la hoja\n\n// Reglas de marca (LAB 10 cap. 2, LAB 11): nada de bots; la IA solo como miedo o riesgo (informational),\n// nunca como solución que se compra o se implanta.\nconst BOTS = /\\b(chatbots?|bots?)\\b/i;\nconst IA = /\\b(ia|ai|inteligencia artificial|artificial intelligence)\\b/i;\nconst COMPRA_IA = /\\b(implementar|implantar|implementaci[oó]n|contratar|comprar|adoptar|implement|implementation|adopt|hire|buy|software|herramientas?|tools?)\\b/i;\n\nconst clean = (v: unknown, max = 200) =>\n  String(v ?? '')\n    .replace(/[\\u0000-\\u001f]/g, ' ')\n    .replace(/^[=+\\-@]/, \"'$&\") // anti fórmula: una celda nunca empieza por = + - @\n    .trim()\n    .slice(0, max);\n\n// La respuesta de la API trae varios bloques (texto, y según el modelo también pensamiento).\n// Se cogen TODOS los de tipo texto, no el primero a secas: ese fue el fallo de la pieza\n// piece-claude, que devolvía vacío cuando el primer bloque no era texto.\nconst textoDe = (body: unknown): string => {\n  if (typeof body === 'string') return body;\n  const bloques = (body as { content?: Array<{ type?: string; text?: string }> })?.content;\n  if (!Array.isArray(bloques)) return '';\n  return bloques.filter((b) => b?.type === 'text' && typeof b.text === 'string').map((b) => b.text).join('\\n');\n};\n\nexport const code = async (inputs: { claudeBody: unknown; runDate?: string }) => {\n  const uso = (inputs.claudeBody as { usage?: { input_tokens?: number; output_tokens?: number } })?.usage ?? {};\n  const raw = textoDe(inputs.claudeBody);\n  if (!raw) throw new Error('La API de Anthropic no devolvió ningún bloque de texto');\n  // Claude a veces envuelve el JSON en ```json … ```: nos quedamos con el primer objeto.\n  const start = raw.indexOf('{');\n  const end = raw.lastIndexOf('}');\n  if (start < 0 || end <= start) throw new Error('La respuesta de Claude no contiene JSON');\n\n  let parsed: { keywords?: unknown };\n  try {\n    parsed = JSON.parse(raw.slice(start, end + 1));\n  } catch {\n    throw new Error('El JSON de Claude no es válido');\n  }\n  const list = Array.isArray(parsed.keywords) ? parsed.keywords : [];\n\n  const seen = new Set<string>();\n  const date = (inputs.runDate ? new Date(inputs.runDate) : new Date()).toISOString().slice(0, 10);\n  const rows = [];\n  let discarded = 0;\n  for (const item of list as Record<string, unknown>[]) {\n    const keyword = clean(item?.keyword, 120).toLowerCase();\n    const idioma = String(item?.idioma ?? '').trim().toLowerCase() as Idioma;\n    const intent = INTENTS.includes(item?.intent as Intent) ? (item.intent as Intent) : 'informational';\n    const key = `${idioma}|${keyword}`;\n    const breaksBrand =\n      BOTS.test(keyword) || (IA.test(keyword) && (intent !== 'informational' || COMPRA_IA.test(keyword)));\n    if (!keyword || !IDIOMAS.includes(idioma) || seen.has(key) || breaksBrand) {\n      discarded++;\n      continue;\n    }\n    seen.add(key);\n    rows.push({\n      fecha: date,\n      keyword,\n      icp_pain: clean(item?.icp_pain),\n      intent,\n      monthly_volume: '', // sin cuenta de Google Ads todavía: el volumen queda vacío\n      difficulty: '',\n      owner: intent === 'transactional' ? 'sem' : 'seo',\n      idioma,\n    });\n    if (rows.length >= MAX_ROWS) break;\n  }\n  if (rows.length === 0) throw new Error('Claude no devolvió ninguna keyword utilizable');\n\n  return {\n    rows,\n    count: rows.length,\n    discarded,\n    rows_json: JSON.stringify(rows),\n    tokens_in: uso.input_tokens ?? null,\n    tokens_out: uso.output_tokens ?? null,\n  };\n};\n",
+                      "packageJson": "{}"
                     },
                     "errorHandlingOptions": {
                       "retryOnFailure": {
@@ -177,6 +264,118 @@
                       },
                       "continueOnFailure": {
                         "value": false
+                      }
+                    }
+                  },
+                  "nextAction": {
+                    "name": "step_4",
+                    "displayName": "Entrega · KeywordSet a VrutalOS",
+                    "type": "PIECE",
+                    "valid": true,
+                    "skip": false,
+                    "settings": {
+                      "pieceName": "@activepieces/piece-http",
+                      "pieceVersion": "0.11.19",
+                      "actionName": "send_request",
+                      "propertySettings": {
+                        "body": {
+                          "type": "MANUAL",
+                          "schema": {
+                            "data": {
+                              "type": "JSON",
+                              "required": true,
+                              "displayName": "JSON Body"
+                            }
+                          }
+                        }
+                      },
+                      "input": {
+                        "method": "POST",
+                        "url": "https://rgauumxztblwurzebmsa.supabase.co/functions/v1/work-items-write",
+                        "headers": {
+                          "Content-Type": "application/json",
+                          "X-AP-Token": "PENDIENTE_GENERAR_SECRETO_AP_INTEGRATION_TOKEN"
+                        },
+                        "queryParams": {},
+                        "authType": "NONE",
+                        "body_type": "json",
+                        "body": {
+                          "data": {
+                            "job_role_key": "search_marketing",
+                            "collection": "keywords",
+                            "rows": "{{step_3.rows}}",
+                            "run_ref": "MKT-F4 {{trigger.timestamp}}"
+                          }
+                        },
+                        "response_is_binary": false,
+                        "followRedirects": true
+                      },
+                      "errorHandlingOptions": {
+                        "retryOnFailure": {
+                          "value": false
+                        },
+                        "continueOnFailure": {
+                          "value": false
+                        }
+                      }
+                    },
+                    "nextAction": {
+                      "name": "step_5",
+                      "displayName": "Deja rastro · run_log",
+                      "type": "PIECE",
+                      "valid": true,
+                      "skip": false,
+                      "settings": {
+                        "pieceName": "@activepieces/piece-http",
+                        "pieceVersion": "0.11.19",
+                        "actionName": "send_request",
+                        "propertySettings": {
+                          "body": {
+                            "type": "MANUAL",
+                            "schema": {
+                              "data": {
+                                "type": "JSON",
+                                "required": true,
+                                "displayName": "JSON Body"
+                              }
+                            }
+                          }
+                        },
+                        "input": {
+                          "method": "POST",
+                          "url": "https://rgauumxztblwurzebmsa.supabase.co/functions/v1/run-log-write",
+                          "headers": {
+                            "Content-Type": "application/json",
+                            "X-AP-Token": "PENDIENTE_GENERAR_SECRETO_AP_INTEGRATION_TOKEN"
+                          },
+                          "queryParams": {},
+                          "authType": "NONE",
+                          "body_type": "json",
+                          "body": {
+                            "data": {
+                              "job_role_key": "search_marketing",
+                              "task_key": "TSK-000161",
+                              "flow_key": "MKT-F4",
+                              "outcome": "ok",
+                              "detail": "{{step_3.count}} keywords entregadas, {{step_3.discarded}} descartadas",
+                              "provider": "anthropic",
+                              "model_name": "{{step_6.body.model}}",
+                              "run_ref": "MKT-F4 {{trigger.timestamp}}",
+                              "tokens_in": "{{step_3.tokens_in}}",
+                              "tokens_out": "{{step_3.tokens_out}}"
+                            }
+                          },
+                          "response_is_binary": false,
+                          "followRedirects": true
+                        },
+                        "errorHandlingOptions": {
+                          "retryOnFailure": {
+                            "value": false
+                          },
+                          "continueOnFailure": {
+                            "value": false
+                          }
+                        }
                       }
                     }
                   }

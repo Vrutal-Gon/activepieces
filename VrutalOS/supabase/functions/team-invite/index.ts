@@ -27,7 +27,7 @@ const ALLOWED_EMAIL_DOMAINS = (Deno.env.get('ALLOWED_EMAIL_DOMAINS') ?? '')
   .filter((d) => d.length > 0);
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const ROLES = ['client_user', 'client_manager', 'client_admin'];
+const ROLES = ['client_user', 'client_marketing_admin', 'client_admin'];
 
 function corsHeaders(origin: string | null): Record<string, string> {
   return {

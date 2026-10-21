@@ -2,9 +2,9 @@
   "block": "Ordena · a KeywordSet",
   "kind": "normalize",
   "variant": {},
-  "consumes": ["texto de Claude con JSON"],
+  "consumes": ["respuesta de la API de Anthropic"],
   "produces": "KeywordSet@1",
-  "inputs": { "claudeText": "{{step_2}}", "runDate": "{{trigger.timestamp}}" }
+  "inputs": { "claudeBody": "{{step_6.body}}", "runDate": "{{trigger.timestamp}}" }
 } */
 // Paso Code de Activepieces. Convierte la respuesta de Claude en filas KeywordSet válidas (es / en).
 // Fail-closed: si la respuesta no trae JSON utilizable, el paso falla y nada se escribe en la hoja.
@@ -28,8 +28,20 @@ const clean = (v: unknown, max = 200) =>
     .trim()
     .slice(0, max);
 
-export const code = async (inputs: { claudeText: unknown; runDate?: string }) => {
-  const raw = typeof inputs.claudeText === 'string' ? inputs.claudeText : JSON.stringify(inputs.claudeText ?? '');
+// La respuesta de la API trae varios bloques (texto, y según el modelo también pensamiento).
+// Se cogen TODOS los de tipo texto, no el primero a secas: ese fue el fallo de la pieza
+// piece-claude, que devolvía vacío cuando el primer bloque no era texto.
+const textoDe = (body: unknown): string => {
+  if (typeof body === 'string') return body;
+  const bloques = (body as { content?: Array<{ type?: string; text?: string }> })?.content;
+  if (!Array.isArray(bloques)) return '';
+  return bloques.filter((b) => b?.type === 'text' && typeof b.text === 'string').map((b) => b.text).join('\n');
+};
+
+export const code = async (inputs: { claudeBody: unknown; runDate?: string }) => {
+  const uso = (inputs.claudeBody as { usage?: { input_tokens?: number; output_tokens?: number } })?.usage ?? {};
+  const raw = textoDe(inputs.claudeBody);
+  if (!raw) throw new Error('La API de Anthropic no devolvió ningún bloque de texto');
   // Claude a veces envuelve el JSON en ```json … ```: nos quedamos con el primer objeto.
   const start = raw.indexOf('{');
   const end = raw.lastIndexOf('}');
@@ -67,12 +79,18 @@ export const code = async (inputs: { claudeText: unknown; runDate?: string }) =>
       monthly_volume: '', // sin cuenta de Google Ads todavía: el volumen queda vacío
       difficulty: '',
       owner: intent === 'transactional' ? 'sem' : 'seo',
-      estado: 'propuesta',
       idioma,
     });
     if (rows.length >= MAX_ROWS) break;
   }
   if (rows.length === 0) throw new Error('Claude no devolvió ninguna keyword utilizable');
 
-  return { rows, count: rows.length, discarded, rows_json: JSON.stringify(rows) };
+  return {
+    rows,
+    count: rows.length,
+    discarded,
+    rows_json: JSON.stringify(rows),
+    tokens_in: uso.input_tokens ?? null,
+    tokens_out: uso.output_tokens ?? null,
+  };
 };

@@ -1,0 +1,143 @@
+/* Calendario de rango (DateRangePicker). Reutiliza los botones de components.css: aquí solo va
+   el desplegable, los dos meses y el pintado del tramo. */
+
+.rango {
+  position: relative;
+}
+
+.rango__disparador {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rango__disparador:hover:not(:disabled) {
+  border-color: var(--action);
+}
+
+.rango__disparador:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rango__disparador--vacio {
+  color: var(--text-secondary);
+}
+
+.rango__icono {
+  opacity: 0.7;
+}
+
+.rango__panel {
+  position: absolute;
+  z-index: var(--z-menu);
+  top: calc(100% + var(--space-1));
+  left: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-raised);
+  box-shadow: var(--shadow-pop);
+}
+
+.rango__cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.rango__pista {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.rango__meses {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.rango__pie {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.mes__titulo {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  text-align: center;
+  text-transform: capitalize;
+}
+
+.mes__semana,
+.mes__rejilla {
+  display: grid;
+  grid-template-columns: repeat(7, 2rem);
+  gap: 2px;
+}
+
+.mes__dia-nombre {
+  color: var(--text-secondary);
+  font-size: var(--text-2xs);
+  text-align: center;
+}
+
+.mes__hueco {
+  height: 2rem;
+}
+
+.mes__dia {
+  height: 2rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.mes__dia:hover {
+  background: var(--action-subtle);
+}
+
+/* El tramo entre las dos puntas, en violeta tenue; las puntas, en violeta pleno. */
+.mes__dia--dentro {
+  background: var(--action-subtle);
+  border-radius: 0;
+}
+
+.mes__dia--extremo {
+  background: var(--action);
+  color: var(--color-bone);
+  font-weight: 600;
+}
+
+/* En móvil no caben dos meses al lado: se apilan. */
+@media (max-width: 720px) {
+  .rango__meses {
+    flex-direction: column;
+  }
+
+  .rango__panel {
+    left: auto;
+    right: 0;
+  }
+}

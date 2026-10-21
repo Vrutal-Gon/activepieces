@@ -1,3 +1,5 @@
+import type { ProfileRole } from './types';
+
 export type Workspace = 'trabajo' | 'admin';
 
 export interface NavItem {
@@ -6,8 +8,8 @@ export interface NavItem {
   icon: string;
   /** Evita que «/» marque «Inicio» como activo en cualquier ruta hija. */
   end?: boolean;
-  /** Solo se muestra al Admin (UX: el servidor decide con RLS). */
-  adminOnly?: boolean;
+  /** Roles que ven esta entrada. Ausente = la ve cualquiera (UX: el servidor decide con RLS). */
+  roles?: ProfileRole[];
 }
 
 export interface NavGroup {
@@ -33,7 +35,13 @@ export const WORKSPACES: Record<Workspace, { label: string; hint: string; icon: 
           { to: '/reportes', label: 'Reportes', icon: '▦' },
         ],
       },
-      { label: 'Ayuda', items: [{ to: '/soporte', label: 'Soporte', icon: '?', adminOnly: true }] },
+      {
+        label: 'Negocio',
+        items: [
+          { to: '/negocio', label: 'Negocio', icon: '⌂', roles: ['client_admin', 'client_marketing_admin'] },
+        ],
+      },
+      { label: 'Ayuda', items: [{ to: '/soporte', label: 'Soporte', icon: '?', roles: ['client_admin'] }] },
     ],
   },
   admin: {
@@ -65,10 +73,15 @@ export const WORKSPACES: Record<Workspace, { label: string; hint: string; icon: 
 };
 
 /** Grupos del espacio con solo los elementos que esta persona puede ver; sin grupos vacíos. */
-export function visibleGroups(workspace: Workspace, isAdmin: boolean): NavGroup[] {
+export function visibleGroups(workspace: Workspace, role: ProfileRole): NavGroup[] {
   return WORKSPACES[workspace].groups
-    .map((g) => ({ ...g, items: g.items.filter((i) => isAdmin || !i.adminOnly) }))
+    .map((g) => ({ ...g, items: g.items.filter((i) => !i.roles || i.roles.includes(role)) }))
     .filter((g) => g.items.length > 0);
+}
+
+/** Quién completa el scope de negocio. El Admin siempre puede: muchas veces es la misma persona. */
+export function canEditScope(role: ProfileRole): boolean {
+  return role === 'client_admin' || role === 'client_marketing_admin';
 }
 
 export function workspaceFor(pathname: string, isAdmin: boolean): Workspace {

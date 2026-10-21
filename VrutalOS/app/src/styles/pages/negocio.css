@@ -1,0 +1,194 @@
+/* Scope de negocio. Reutiliza chip-group, data-table, pill, notice y empty-state de los estilos
+   comunes: aquí solo va lo propio de esta pantalla. */
+
+.negocio__intro {
+  margin: 0 0 var(--space-4);
+  max-width: 68ch;
+  color: var(--text-secondary);
+}
+
+.negocio__estado {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-raised);
+}
+
+.negocio__completitud {
+  margin: 0;
+}
+
+.negocio__bloqueos {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-4);
+  color: var(--text-secondary);
+}
+
+.negocio__bloqueos li + li {
+  margin-top: var(--space-1);
+}
+
+.negocio__tabs {
+  margin-bottom: var(--space-3);
+}
+
+.chip__count {
+  margin-left: 0.4em;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
+.negocio__para {
+  margin: 0 0 var(--space-4);
+  max-width: 68ch;
+  color: var(--text-secondary);
+}
+
+/* ── Bloques de campo/valor ─────────────────────────────────────────── */
+
+.negocio__campos {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.campo {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.campo__cab {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.campo__titulo {
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.campo__nota,
+.campo__ayuda,
+.campo__vacio {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.campo__ayuda {
+  margin: var(--space-1) 0 0;
+}
+
+.campo__vacio {
+  margin: var(--space-2) 0 0;
+  font-style: italic;
+}
+
+.campo__lista {
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fila {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+
+.fila:last-child {
+  border-bottom: 0;
+}
+
+.fila__valor {
+  flex: 1 1 20ch;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.fila__candado {
+  opacity: 0.6;
+}
+
+.fila--nueva {
+  margin-top: var(--space-2);
+  border-bottom: 0;
+}
+
+.fila--nueva .text-input {
+  flex: 1 1 24ch;
+}
+
+/* ── Bloques de tabla ───────────────────────────────────────────────── */
+
+.negocio__acciones {
+  text-align: right;
+}
+
+.negocio__nueva {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.negocio__campo {
+  display: grid;
+  gap: var(--space-1);
+  flex: 1 1 12ch;
+}
+
+.negocio__campo--largo {
+  flex: 2 1 24ch;
+}
+
+.negocio__etiqueta {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* ── Estrategia SEM (dentro del bloque Estrategia) ──────────────────── */
+
+.sem {
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.sem__cab {
+  margin-bottom: var(--space-3);
+}
+
+.sem__titulo {
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.sem__ayuda {
+  margin: var(--space-1) 0 0;
+  max-width: 68ch;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+/* El aviso de validación ocupa toda la fila del formulario, debajo de los campos. */
+.sem__aviso {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+/* En móvil la tabla se lee por filas: cada celda lleva su etiqueta. */
+@media (max-width: 720px) {
+  .negocio__nueva {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

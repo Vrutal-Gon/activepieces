@@ -10,7 +10,7 @@ import '../styles/pages/team.css';
 
 const ROLE_LABEL: Record<ProfileRole, string> = {
   client_admin: 'Administrador',
-  client_manager: 'Manager',
+  client_marketing_admin: 'Admin de Marketing',
   client_user: 'Usuario',
 };
 
@@ -98,7 +98,7 @@ function InviteForm({ onCancel, onInvited }: InviteFormProps) {
             onChange={(e) => setRole(e.target.value as ProfileRole)}
           >
             <option value="client_user">{ROLE_LABEL.client_user}</option>
-            <option value="client_manager">{ROLE_LABEL.client_manager}</option>
+            <option value="client_marketing_admin">{ROLE_LABEL.client_marketing_admin}</option>
             <option value="client_admin">{ROLE_LABEL.client_admin}</option>
           </select>
         </div>
@@ -108,9 +108,9 @@ function InviteForm({ onCancel, onInvited }: InviteFormProps) {
           Un administrador puede gestionar el equipo, las integraciones y todo lo de la empresa.
         </p>
       )}
-      {role === 'client_manager' && (
+      {role === 'client_marketing_admin' && (
         <p className="notice notice--info invite__warn">
-          Un manager puede editar el perfil de la empresa (competidores, estrategia de precio...), pero no gestiona el equipo ni las integraciones.
+          Un Admin de Marketing completa el scope de negocio (perfil, marca, competencia, estrategia, productos foco y objetivos) y aprueba el trabajo de los especialistas a los que le des acceso. No gestiona el equipo, las integraciones ni la facturación.
         </p>
       )}
       {error && (
@@ -235,7 +235,7 @@ export function TeamPage({ profile }: { profile: Profile }) {
                         onChange={(e) => setPending({ id: m.id, kind: 'role', role: e.target.value as ProfileRole })}
                       >
                         <option value="client_user">{ROLE_LABEL.client_user}</option>
-                        <option value="client_manager">{ROLE_LABEL.client_manager}</option>
+                        <option value="client_marketing_admin">{ROLE_LABEL.client_marketing_admin}</option>
                         <option value="client_admin">{ROLE_LABEL.client_admin}</option>
                       </select>
                       {isMe && <span className="data-table__secondary">No puedes cambiar tu propio rol</span>}

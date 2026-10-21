@@ -62,7 +62,7 @@ export function AppShell({ profile, email, onSignOut }: AppShellProps) {
         )}
 
         <nav aria-label="Principal">
-          {visibleGroups(current, isAdmin).map((group) => (
+          {visibleGroups(current, profile.role).map((group) => (
             <div key={group.label} className="side-nav__group">
               <span className="eyebrow side-nav__label">{group.label}</span>
               {group.items.map((item) => (
