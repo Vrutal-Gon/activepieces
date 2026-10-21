@@ -19,7 +19,7 @@ Patrón LLM, riesgo bajo, reversible. Alimenta F13.
 | Antes (pestaña) | Ahora | Campos |
 |---|---|---|
 | `Páginas` | — | `url` · `titulo` · `tema` |
-| `Briefs` | colección `briefs` de work_item | `fecha` · `brief_id` · `objective` · `audience` · `key_message` · `evidence` · `cta` · `target_keyword` · `channel` · `target_page` |
+| `Briefs` | colección `briefs` de work_item | `fecha` · `brief_id` · `objective` · `audience` · `key_message` · `evidence` · `cta` · `target_keyword` · `channel` · `link_url` |
 | `Rastro` | `run_log` | `fecha` · `flujo` · `tarea` · `resultado` · `detalle` |
 
 2. Conexiones en Activepieces: **ninguna**. Los pasos HTTP se autentican con `X-AP-Token` (el secreto `AP_INTEGRATION_TOKEN` del proyecto) y la clave de Claude se pide al Vault en ejecución.
@@ -40,12 +40,12 @@ Patrón LLM, riesgo bajo, reversible. Alimenta F13.
 
 ## Contratos
 
-- **ContentBrief** (existente + campo propuesto target_page): `brief_id`, `objective`, `audience`, `key_message`, `evidence`, `cta`, `target_keyword`, `channel`, `target_page`
+- **ContentBrief** (existente + link_url): `brief_id`, `objective`, `audience`, `key_message`, `evidence`, `cta`, `target_keyword`, `channel`, `link_url`
 
 ## Diferencias con el diagrama (a revisar)
 
 - El KeywordSet llega en el cuerpo del webhook; el diagrama no dice cómo. Alternativa: leer la pestaña `Keywords` con `estado = propuesta` (F4 las escribe ahí). A decidir.
-- Se propone el campo `target_page` en ContentBrief (hoy no existe): sería ContentBrief@2.
+- El campo de la página se llama `link_url`, no `target_page`: se fijó así en el contrato ContentBrief el 2026-10-09 y así lo declara la colección `briefs`. Entregarlo con el nombre viejo lo rechaza `work-items-write` con 400.
 
 ## Seguridad
 

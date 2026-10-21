@@ -63,9 +63,25 @@ avisar.
 
 ### 4. Probar y publicar
 
-1. **Probar flujo** con un cuerpo de calendario de verdad. Qué debe verse: `step_1` y `step_2` con
-   `count` > 0; `step_7` con `content` y `usage`; `step_5` devolviendo
-   `{"collection": "briefs", "written": N}`; `step_6` con `{"ok": true}`.
+1. **Probar flujo** con un cuerpo de calendario de verdad. F12 (el flujo que llena el calendario)
+   todavía no está construido, así que el cuerpo se manda a mano. Este sirve: son los seis campos
+   del contrato `EditorialPlan` y la keyword es una de las que F4 entregó de verdad el 2026-10-21.
+
+   ```json
+   {
+     "week": "2026-W44",
+     "publish_at": "2026-10-28",
+     "piece_title": "Cuánto cuesta de verdad que se vaya una persona",
+     "channel": "linkedin",
+     "target_keyword": "cuánto cuesta la rotación de empleados",
+     "brief_id": "kw-cuanto-cuesta-la-rotacion-de-empleados"
+   }
+   ```
+
+   Qué debe verse: `step_1` con `count: 16` (ICP) y `step_2` con `count: 16` (marca); `step_7` con
+   `content` y `usage`; `step_5` devolviendo `{"collection": "briefs", "written": N}`; `step_6` con
+   `{"ok": true}`. Si `step_5` responde **400 nombrando una columna**, el «Ordena» está emitiendo
+   una columna que la colección no declara: es el fallo que ya costó una ronda en F4 con `estado`.
 2. **En VrutalOS**: el Especialista de Contenido tiene la pestaña **Briefs** con N filas en estado
    **propuesta**, y se pueden aprobar o rechazar. En **Consumo**, la ejecución con sus tokens.
 3. **Publicar**, y borrar el flujo viejo si quedó duplicado al importar.
@@ -75,6 +91,7 @@ avisar.
 ## Contratos
 
 - **ContentBrief** (existente + `link_url`, 2026-10-09): `brief_id`, `objective`, `audience`, `key_message`, `evidence`, `cta`, `target_keyword`, `channel`, `link_url`. `link_url` formaliza el campo `target_page` que F10 proponía sin fijarlo en el contrato (ver `MKT-F10_keyword_pagina/README.md`) — mismo campo, nombre definitivo.
+- **F13 no entrega `link_url`, y es correcto.** Un brief de F13 nace de una entrada del calendario, que no dice en qué página va: la página la asigna **F10**, que escribe en la misma colección `briefs` con ese campo relleno. Por eso F13 entrega 9 de las 10 columnas declaradas y la columna «Enlace» sale vacía en sus filas. Lo que no se puede hacer es pedírselo a Claude: inventaría una URL. Si algún día F13 debe traerlo, vendrá en el cuerpo del webhook y se copiará de ahí, nunca del modelo.
 
 ## Diferencias con el diagrama (a revisar)
 

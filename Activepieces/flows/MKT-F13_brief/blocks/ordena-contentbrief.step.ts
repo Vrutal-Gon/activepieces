@@ -6,14 +6,6 @@
   "produces": "ContentBrief@1",
   "inputs": { "sources": ["{{step_7.body}}"] }
 } */
-/* vrutal-block {
-  "block": "Ordena · a ContentBrief",
-  "kind": "normalize",
-  "variant": {},
-  "consumes": ["salida del paso anterior"],
-  "produces": "ContentBrief",
-  "inputs": {"sources": ["{{step_3}}"]}
-} */
 // Paso Code de Activepieces. Convierte la salida anterior en filas ContentBrief validadas.
 // Fail-closed: si no queda ninguna fila valida, el paso falla y nada se escribe.
 // Contrato: existente. Los campos son una PROPUESTA hasta que el founder los apruebe.

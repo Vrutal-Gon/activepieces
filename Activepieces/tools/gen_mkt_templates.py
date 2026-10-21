@@ -71,9 +71,12 @@ def f(name, req=True, enum=None, default=None, sourced=False):
 CONTRACTS = {
     "ContentBrief": ("existente", [f("brief_id"), f("objective"), f("audience"), f("key_message"),
                                    f("evidence", req=False, sourced=True), f("cta"), f("target_keyword"), f("channel")]),
-    "ContentBrief+page": ("existente + campo propuesto target_page", [
+    # `link_url` es el nombre DEFINITIVO del campo que F10 proponía como `target_page` (fijado en el
+    # contrato el 2026-10-09). El nombre importa: la colección `briefs` declara `link_url`, y
+    # `work-items-write` rechaza con 400 cualquier columna que la colección no declare.
+    "ContentBrief+page": ("existente + link_url", [
         f("brief_id"), f("objective"), f("audience"), f("key_message"), f("evidence", req=False, sourced=True),
-        f("cta"), f("target_keyword"), f("channel"), f("target_page")]),
+        f("cta"), f("target_keyword"), f("channel"), f("link_url")]),
     "ContentDraft": ("existente", [f("brief_id"), f("channel"), f("body"), f("version", default="1"),
                                    f("voice_check", req=False, enum=["ok", "issues"]), f("voice_issues", req=False),
                                    f("status", default="draft", enum=["draft", "approved", "scheduled", "published"]),
@@ -562,13 +565,13 @@ FLOWS = [
          [("Páginas", "`url` · `titulo` · `tema`"), ("Briefs", hdr("ContentBrief+page")), RAST], [
         S("lee", "Consulta · páginas existentes del sitio", id="pags", tab="Páginas"),
         S("claude", "Decide · keyword → página existente o nueva", id="asig", max=6000,
-          system=PRE + "Tarea TSK-000128: asignar cada keyword a una página existente o proponer una nueva.\nReglas: si una página existente cubre el tema, target_page es su URL; si no, `NUEVA: <título propuesto>`; no inventes URLs; evidence vacío salvo fuente citada; brief_id estable con la forma `kw-<keyword en minúsculas con guiones>`.\n" + RULES + shape("ContentBrief+page"),
+          system=PRE + "Tarea TSK-000128: asignar cada keyword a una página existente o proponer una nueva.\nReglas: si una página existente cubre el tema, link_url es su URL; si no, `NUEVA: <título propuesto>`; no inventes URLs; evidence vacío salvo fuente citada; brief_id estable con la forma `kw-<keyword en minúsculas con guiones>`.\n" + RULES + shape("ContentBrief+page"),
           prompt="KeywordSet recibido (JSON):\n<<trigger.body>>\n\nPáginas existentes (filas):\n<<pags>>\n\nAsigna."),
         S("ordena", "Ordena · ContentBrief", id="ord", contract="ContentBrief+page", sources=["asig"]),
         S("entrega", "Ejecuta · escribir los briefs", tab="Briefs", **{"from": "ord"}),
         S("rastro", "Deja rastro", ran="ord")],
          deviations=["El KeywordSet llega en el cuerpo del webhook; el diagrama no dice cómo. Alternativa: leer la pestaña `Keywords` con `estado = propuesta` (F4 las escribe ahí). A decidir.",
-                     "Se propone el campo `target_page` en ContentBrief (hoy no existe): sería ContentBrief@2."]),
+                     "El campo de la página se llama `link_url`, no `target_page`: se fijó así en el contrato ContentBrief el 2026-10-09 y así lo declara la colección `briefs`. Entregarlo con el nombre viejo lo rechaza `work-items-write` con 400."]),
 
     Flow("F11", "MKT-F11_auditoria", "Auditoría técnica del sitio", "search_marketing", "TSK-000119", ("schedule", "every_week", {"day_of_the_week": 2, "hour_of_the_day": 7}, "cada martes, 07:00"),
          "Patrón SCRIPT, riesgo bajo, solo lectura. **Bloqueado** en parte: indexación y enlaces necesitan Search Console (sin web verificada).",
