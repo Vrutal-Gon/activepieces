@@ -17,9 +17,16 @@ FILES=$(cd "$SRC_DIR" && find . -type f ! -name '.*' | sed 's#^\./##' | sort)
 [ -n "$FILES" ] || { echo "No hay archivos en $SRC_DIR"; exit 1; }
 
 # Un artefacto no debe llevar secretos: parar si algo lo parece.
+# Se busca un VALOR asignado, no la palabra sola: `input_tokens` o `tokens_out` son conteos de
+# uso y son legítimos en un bloque, y con el patrón anterior bloqueaban la publicación de
+# MKT-F4 el 2026-10-19. Lo que no puede salir es una credencial literal.
+SENSIBLE='(password|passwd|secret|token|api[_-]?key|authorization|bearer)[a-z_]*[[:space:]]*[:=][[:space:]]*.?["'"'"'`][^"'"'"'`]{16,}'
 for f in $FILES; do
-  if grep -qiE 'password|passwd|secret|token|api[_-]?key|authorization|bearer' "$SRC_DIR/$f"; then
-    echo "$f contiene palabras sensibles (password/secret/token/api key...). Revísalo antes de subirlo."; exit 1
+  if grep -qiE "$SENSIBLE" "$SRC_DIR/$f"; then
+    echo "$f parece llevar una credencial escrita a mano (password/secret/token/api key...). Revísalo antes de subirlo."; exit 1
+  fi
+  if grep -qE 'PENDIENTE_GENERAR_SECRETO' "$SRC_DIR/$f"; then
+    echo "$f lleva un marcador PENDIENTE_GENERAR_SECRETO: no se publica un artefacto a medio configurar."; exit 1
   fi
 done
 

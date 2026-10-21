@@ -14,15 +14,15 @@ Patrón RULES, riesgo medio, reversible. «Pide permiso» solo se activa si la d
 
 ## Puesta en marcha
 
-1. En la hoja `Vrutal-labs · Marketing`, crea estas pestañas (cabeceras exactas en la fila 1):
+1. Lo que este flujo lee y entrega, todo en la base del cliente:
 
-| Pestaña | Cabeceras |
-|---|---|
-| `Perfil` | `campo` · `valor` (ya existe) |
-| `Leads` | `fecha` · `lead_id` · `source` · `company` · `role` · `status` |
-| `Rastro` | `fecha` · `flujo` · `tarea` · `resultado` · `detalle` |
+| Antes (pestaña) | Ahora | Campos |
+|---|---|---|
+| `Perfil` | entrada `icp` | `campo` · `valor` (ya existe) |
+| `Leads` | — | `fecha` · `lead_id` · `source` · `company` · `role` · `status` |
+| `Rastro` | `run_log` | `fecha` · `flujo` · `tarea` · `resultado` · `detalle` |
 
-2. Conexiones que ya existen en la instancia: `Google · Vrutal-labs` y `Claude · Vrutal-labs`.
+2. Conexiones en Activepieces: **ninguna**. Los pasos HTTP se autentican con `X-AP-Token` (el secreto `AP_INTEGRATION_TOKEN` del proyecto) y la clave de Claude se pide al Vault en ejecución.
 3. **Flujos → Importar** → `F6.template.json`. Los pasos se configuran en este orden:
 
 | Paso | Qué hay que hacer |
@@ -34,7 +34,7 @@ Patrón RULES, riesgo medio, reversible. «Pide permiso» solo se activa si la d
 | `step_3` Decide · reglas ICP + intención → lead o MQL | **Sustituir el paso.** Reglas deterministas (sin LLM) que devuelvan `lead` o `mql`. Pesos y umbral SIN CALIBRAR (LAB 11): fijarlos con datos del piloto, no inventarlos. |
 | `step_4` Pide permiso · aprobar el paso a MQL | **Sustituir el paso.** Solo si la decisión es `mql`: pedir aprobación al founder; si es `lead`, pasar sin pedirla. La condición vive dentro del bloque. Fail-closed: sin respuesta, no cambia el estado. |
 | `step_5` Ejecuta · actualizar el estado del lead | **Sustituir el paso.** Actualizar el estado del lead (HubSpot u hoja `Leads`). Reversible. |
-| `step_6` Deja rastro | Nada que hacer: pestaña `Rastro` y los campos A–E ya vienen puestos. |
+| `step_6` Deja rastro | Nada que configurar: deja la ejecución en `run_log`, con sus tokens. Solo el token en `X-AP-Token`. |
 
 4. **Probar flujo** y comprobar la salida de cada paso antes de publicar.
 
@@ -53,5 +53,7 @@ Patrón RULES, riesgo medio, reversible. «Pide permiso» solo se activa si la d
 
 - Todo paso «pendiente» lanza un error: un flujo a medio configurar nunca actúa.
 - Los prompts solo reciben campos estructurados del cliente; nunca texto libre del cliente (los prompts viven aún dentro del paso: deuda declarada en F4).
-- Las celdas que escribe `Ordena` no pueden empezar por `= + - @` (anti fórmula).
+- Las celdas que escribe `Ordena` no pueden empezar por `= + - @` (anti fórmula): una fila de `work_item` puede acabar exportada a una hoja.
+- La clave de Claude no vive en el flujo: se pide al Vault del cliente en cada ejecución.
+- Los cuerpos JSON van en el campo **JSON Body** de cada paso HTTP: fuera de ahí se envían vacíos y sin avisar.
 - El disparador es un webhook con cabecera `X-Vrutal-Token`: pon un secreto real antes de publicar.

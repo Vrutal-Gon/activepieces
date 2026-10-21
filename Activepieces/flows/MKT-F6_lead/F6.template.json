@@ -14,7 +14,7 @@
   "author": "Vrutal Labs",
   "categories": [],
   "pieces": [
-    "@activepieces/piece-google-sheets",
+    "@activepieces/piece-http",
     "@activepieces/piece-webhook"
   ],
   "flows": [
@@ -52,7 +52,7 @@
               ]
             },
             "sourceCode": {
-              "code": "/* vrutal-block {\n  \"block\": \"Ordena · a Lead\",\n  \"kind\": \"normalize\",\n  \"variant\": {},\n  \"consumes\": [\"salida del paso anterior\"],\n  \"produces\": \"Lead\",\n  \"inputs\": {\"sources\": [\"{{trigger.body}}\"]}\n} */\n// Paso Code de Activepieces. Convierte la salida anterior en filas Lead validadas.\n// Fail-closed: si no queda ninguna fila valida, el paso falla y nada se escribe.\n// Contrato: existente; campos propuestos. Los campos son una PROPUESTA hasta que el founder los apruebe.\n\nconst FIELDS: { name: string; req: boolean; enum: string[] | null; default: string | null; sourced: boolean }[] = [{\"name\": \"lead_id\", \"req\": true, \"enum\": null, \"default\": null, \"sourced\": false}, {\"name\": \"source\", \"req\": false, \"enum\": null, \"default\": null, \"sourced\": false}, {\"name\": \"company\", \"req\": false, \"enum\": null, \"default\": null, \"sourced\": false}, {\"name\": \"role\", \"req\": false, \"enum\": null, \"default\": null, \"sourced\": false}, {\"name\": \"status\", \"req\": true, \"enum\": [\"lead\", \"mql\"], \"default\": \"lead\", \"sourced\": false}];\nconst LOOKUP_KEY = null;\nconst MAX_ROWS = 200; // techo por ejecucion\n\nconst clean = (v: unknown, max = 2000) =>\n  (Array.isArray(v) ? v.join(' | ') : String(v ?? ''))\n    .replace(/[\\u0000-\\u001f]/g, ' ')\n    .replace(/^[=+\\-@]/, \"'$&\") // anti formula: una celda nunca empieza por = + - @\n    .trim()\n    .slice(0, max);\n\nconst toList = (src: unknown): Record<string, unknown>[] => {\n  let data: unknown = src;\n  if (typeof data === 'string') {\n    const a = data.search(/[\\[{]/);\n    const last = Math.max(data.lastIndexOf('}'), data.lastIndexOf(']'));\n    if (a < 0 || last <= a) return [];\n    try { data = JSON.parse(data.slice(a, last + 1)); } catch { throw new Error('El JSON recibido no es valido'); }\n  }\n  const arr = Array.isArray(data)\n    ? data\n    : data && typeof data === 'object' && Array.isArray((data as { items?: unknown }).items)\n      ? (data as { items: unknown[] }).items\n      : data && typeof data === 'object' ? [data] : [];\n  return arr\n    .map((x) => (x && typeof x === 'object' && 'values' in x ? (x as { values: unknown }).values : x))\n    .filter((x): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x));\n};\n\nexport const code = async (inputs: { sources: unknown[]; lookup?: unknown }) => {\n  const ranAt = new Date().toISOString();\n  const day = ranAt.slice(0, 10);\n  const records = (inputs.sources ?? []).flatMap((s) => toList(s));\n  const lookupRows = LOOKUP_KEY ? toList(inputs.lookup) : [];\n  const byKey = new Map(lookupRows.map((r) => [String(r[LOOKUP_KEY as string] ?? ''), r]));\n\n  const rows: Record<string, string>[] = [];\n  let discarded = 0;\n  for (const rec of records) {\n    const extra = LOOKUP_KEY ? byKey.get(String(rec[LOOKUP_KEY] ?? '')) ?? {} : {};\n    const row: Record<string, string> = { fecha: day };\n    let ok = true;\n    for (const fd of FIELDS) {\n      let v = clean(rec[fd.name] ?? extra[fd.name] ?? fd.default ?? '');\n      if (fd.sourced && v && !/https?:\\/\\/|fuente:/i.test(v)) v = ''; // la prueba cita fuente o queda vacia\n      if (v && fd.enum && !fd.enum.includes(v.toLowerCase())) { ok = false; break; }\n      if (fd.enum && v) v = v.toLowerCase();\n      if (fd.req && !v) { ok = false; break; }\n      row[fd.name] = v;\n    }\n    if (!ok) { discarded++; continue; }\n    rows.push(row);\n    if (rows.length >= MAX_ROWS) break;\n  }\n  if (rows.length === 0) throw new Error('Ninguna fila valida para Lead (' + discarded + ' descartadas)');\n  return { rows, count: rows.length, discarded, ran_at: ranAt, rows_json: JSON.stringify(rows) };\n};\n",
+              "code": "/* vrutal-block {\n  \"block\": \"Ordena · a Lead\",\n  \"kind\": \"normalize\",\n  \"variant\": {},\n  \"consumes\": [\"salida del paso anterior\"],\n  \"produces\": \"Lead\",\n  \"inputs\": {\"sources\": [\"{{trigger.body}}\"]}\n} */\n// Paso Code de Activepieces. Convierte la salida anterior en filas Lead validadas.\n// Fail-closed: si no queda ninguna fila valida, el paso falla y nada se escribe.\n// Contrato: existente; campos propuestos. Los campos son una PROPUESTA hasta que el founder los apruebe.\n\nconst FIELDS: { name: string; req: boolean; enum: string[] | null; default: string | null; sourced: boolean }[] = [{\"name\": \"lead_id\", \"req\": true, \"enum\": null, \"default\": null, \"sourced\": false}, {\"name\": \"source\", \"req\": false, \"enum\": null, \"default\": null, \"sourced\": false}, {\"name\": \"company\", \"req\": false, \"enum\": null, \"default\": null, \"sourced\": false}, {\"name\": \"role\", \"req\": false, \"enum\": null, \"default\": null, \"sourced\": false}, {\"name\": \"status\", \"req\": true, \"enum\": [\"lead\", \"mql\"], \"default\": \"lead\", \"sourced\": false}];\nconst LOOKUP_KEY = null;\nconst MAX_ROWS = 200; // techo por ejecucion\n\nconst clean = (v: unknown, max = 2000) =>\n  (Array.isArray(v) ? v.join(' | ') : String(v ?? ''))\n    .replace(/[\\u0000-\\u001f]/g, ' ')\n    .replace(/^[=+\\-@]/, \"'$&\") // anti formula: una celda nunca empieza por = + - @\n    .trim()\n    .slice(0, max);\n\n// La respuesta de la API de Anthropic trae bloques (texto y, segun el modelo, pensamiento).\n// Se cogen TODOS los de tipo texto, no el primero: ese fue el fallo de la pieza piece-claude.\nconst textoDe = (v: unknown): unknown => {\n  const bloques = (v as { content?: Array<{ type?: string; text?: string }> })?.content;\n  if (!Array.isArray(bloques)) return v;\n  return bloques.filter((b) => b?.type === 'text' && typeof b.text === 'string').map((b) => b.text).join('\\n');\n};\n\nconst usoDe = (fuentes: unknown[]) => {\n  for (const f of fuentes) {\n    const u = (f as { usage?: { input_tokens?: number; output_tokens?: number } })?.usage;\n    if (u) return u;\n  }\n  return {} as { input_tokens?: number; output_tokens?: number };\n};\n\nconst toList = (src: unknown): Record<string, unknown>[] => {\n  let data: unknown = textoDe(src);\n  if (typeof data === 'string') {\n    const a = data.search(/[\\[{]/);\n    const last = Math.max(data.lastIndexOf('}'), data.lastIndexOf(']'));\n    if (a < 0 || last <= a) return [];\n    try { data = JSON.parse(data.slice(a, last + 1)); } catch { throw new Error('El JSON recibido no es valido'); }\n  }\n  const arr = Array.isArray(data)\n    ? data\n    : data && typeof data === 'object' && Array.isArray((data as { items?: unknown }).items)\n      ? (data as { items: unknown[] }).items\n      : data && typeof data === 'object' ? [data] : [];\n  return arr\n    .map((x) => (x && typeof x === 'object' && 'values' in x ? (x as { values: unknown }).values : x))\n    .filter((x): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x));\n};\n\nexport const code = async (inputs: { sources: unknown[]; lookup?: unknown }) => {\n  const ranAt = new Date().toISOString();\n  const day = ranAt.slice(0, 10);\n  const records = (inputs.sources ?? []).flatMap((s) => toList(s));\n  const lookupRows = LOOKUP_KEY ? toList(inputs.lookup) : [];\n  const byKey = new Map(lookupRows.map((r) => [String(r[LOOKUP_KEY as string] ?? ''), r]));\n\n  const rows: Record<string, string>[] = [];\n  let discarded = 0;\n  for (const rec of records) {\n    const extra = LOOKUP_KEY ? byKey.get(String(rec[LOOKUP_KEY] ?? '')) ?? {} : {};\n    const row: Record<string, string> = { fecha: day };\n    let ok = true;\n    for (const fd of FIELDS) {\n      let v = clean(rec[fd.name] ?? extra[fd.name] ?? fd.default ?? '');\n      if (fd.sourced && v && !/https?:\\/\\/|fuente:/i.test(v)) v = ''; // la prueba cita fuente o queda vacia\n      if (v && fd.enum && !fd.enum.includes(v.toLowerCase())) { ok = false; break; }\n      if (fd.enum && v) v = v.toLowerCase();\n      if (fd.req && !v) { ok = false; break; }\n      row[fd.name] = v;\n    }\n    if (!ok) { discarded++; continue; }\n    rows.push(row);\n    if (rows.length >= MAX_ROWS) break;\n  }\n  if (rows.length === 0) throw new Error('Ninguna fila valida para Lead (' + discarded + ' descartadas)');\n  const uso = usoDe(inputs.sources ?? []);\n  return {\n    rows,\n    count: rows.length,\n    discarded,\n    ran_at: ranAt,\n    rows_json: JSON.stringify(rows),\n    tokens_in: uso.input_tokens ?? null,\n    tokens_out: uso.output_tokens ?? null,\n  };\n};\n",
               "packageJson": "{}"
             },
             "errorHandlingOptions": {
@@ -150,65 +150,51 @@
                   },
                   "nextAction": {
                     "name": "step_6",
-                    "valid": false,
+                    "valid": true,
                     "skip": false,
                     "displayName": "Deja rastro",
                     "type": "PIECE",
                     "settings": {
-                      "pieceName": "@activepieces/piece-google-sheets",
-                      "pieceVersion": "0.16.4",
-                      "actionName": "insert_row",
+                      "pieceName": "@activepieces/piece-http",
+                      "pieceVersion": "0.11.19",
+                      "actionName": "send_request",
                       "propertySettings": {
-                        "values": {
+                        "body": {
                           "type": "MANUAL",
                           "schema": {
-                            "A": {
-                              "type": "SHORT_TEXT",
-                              "required": false,
-                              "displayName": "fecha",
-                              "defaultValue": ""
-                            },
-                            "B": {
-                              "type": "SHORT_TEXT",
-                              "required": false,
-                              "displayName": "flujo",
-                              "defaultValue": ""
-                            },
-                            "C": {
-                              "type": "SHORT_TEXT",
-                              "required": false,
-                              "displayName": "tarea",
-                              "defaultValue": ""
-                            },
-                            "D": {
-                              "type": "SHORT_TEXT",
-                              "required": false,
-                              "displayName": "resultado",
-                              "defaultValue": ""
-                            },
-                            "E": {
-                              "type": "SHORT_TEXT",
-                              "required": false,
-                              "displayName": "detalle",
-                              "defaultValue": ""
+                            "data": {
+                              "type": "JSON",
+                              "required": true,
+                              "displayName": "JSON Body"
                             }
                           }
                         }
                       },
                       "input": {
-                        "auth": "{{connections['HirdYf0okm7HontbOX9RE']}}",
-                        "includeTeamDrives": false,
-                        "spreadsheetId": "1QILqdaxNUUYoHUyLsoDgHe45QP_LgGKPnwFhdKmM4BQ",
-                        "sheetId": 1870392726,
-                        "first_row_headers": true,
-                        "as_string": false,
-                        "values": {
-                          "A": "{{step_1.ran_at}}",
-                          "B": "MKT-F6 Puntuar un lead y proponer su estado",
-                          "C": "VRL-MKT-A01",
-                          "D": "ok",
-                          "E": "{{step_1.count}} registros, {{step_1.discarded}} descartados"
-                        }
+                        "method": "POST",
+                        "url": "https://rgauumxztblwurzebmsa.supabase.co/functions/v1/run-log-write",
+                        "headers": {
+                          "Content-Type": "application/json",
+                          "X-AP-Token": "PENDIENTE_GENERAR_SECRETO_AP_INTEGRATION_TOKEN"
+                        },
+                        "queryParams": {},
+                        "authType": "NONE",
+                        "body_type": "json",
+                        "body": {
+                          "data": {
+                            "job_role_key": "marketing_analyst",
+                            "task_key": "VRL-MKT-A01",
+                            "flow_key": "MKT-F6",
+                            "outcome": "ok",
+                            "detail": "{{step_1.count}} registros, {{step_1.discarded}} descartados",
+                            "provider": "anthropic",
+                            "tokens_in": "{{step_1.tokens_in}}",
+                            "tokens_out": "{{step_1.tokens_out}}",
+                            "run_ref": "MKT-F6 {{step_1.ran_at}}"
+                          }
+                        },
+                        "response_is_binary": false,
+                        "followRedirects": true
                       },
                       "errorHandlingOptions": {
                         "retryOnFailure": {

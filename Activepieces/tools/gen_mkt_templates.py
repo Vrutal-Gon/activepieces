@@ -26,6 +26,33 @@ SPREADSHEET_ID = "1QILqdaxNUUYoHUyLsoDgHe45QP_LgGKPnwFhdKmM4BQ"
 SHEETS_AUTH = "{{connections['HirdYf0okm7HontbOX9RE']}}"
 CLAUDE_AUTH = "{{connections['3EXdNSkhU6F3l6DLUEpvX']}}"
 # sheetId (gid) de las pestañas que YA existen en la hoja Vrutal-labs · Marketing. Las que faltan se rellenan al crearlas.
+# Dónde vive ahora lo que antes era una pestaña. Las entradas las mantiene el cliente en
+# VrutalOS → Negocio; las salidas son colecciones de work_item que el cliente ve y aprueba.
+FUNCS = "https://rgauumxztblwurzebmsa.supabase.co/functions/v1"
+AP_TOKEN = "PENDIENTE_GENERAR_SECRETO_AP_INTEGRATION_TOKEN"
+LEE = {  # pestaña -> cuerpo para flow-input-read
+    "Perfil": {"source": "icp"},
+    "Marca": {"source": "brand_voice"},
+    "Estrategia": {"source": "strategy"},
+    "Objetivos": {"source": "channel_target"},
+    "Competencia": {"source": "competitor"},
+    "Productos": {"source": "focus_product"},
+    "Métricas": {"source": "work_items", "collection": "metricas", "status": "delivered"},
+    "Diagnóstico": {"source": "work_items", "collection": "diagnostico", "status": "delivered"},
+    "Briefs": {"source": "work_items", "collection": "briefs", "status": "approved"},
+    "Keywords": {"source": "work_items", "collection": "keywords", "status": "approved"},
+    "Competidores": {"source": "competitor"},
+    "Calendario": {"source": "work_items", "collection": "calendario", "status": "approved"},
+    "Hallazgos": {"source": "work_items", "collection": "hallazgos", "status": "delivered"},
+    "Oportunidades": {"source": "work_items", "collection": "oportunidades", "status": "delivered"},
+}
+ENTREGA = {  # pestaña -> colección de work_item
+    "Keywords": "keywords", "Briefs": "briefs", "Métricas": "metricas",
+    "Diagnóstico": "diagnostico", "Informes": "informes",
+    "Calendario": "calendario", "Fichas": "fichas", "Oportunidades": "oportunidades",
+    "Hallazgos": "hallazgos", "Borradores": "borradores",
+}
+
 TAB_GID = {"Perfil": 0, "Marca": 665253239, "Briefs": 627971883, "Rastro": 1870392726, "Keywords": 213164463,
            "Métricas": 231861211, "Objetivos": 999824235, "Diagnóstico": 1213896648, "Informes": 1106124097}
 # Esquema de los campos dinamicos. Sin esto, Activepieces vacia los campos al importar (comprobado en F13).
@@ -92,8 +119,24 @@ const clean = (v: unknown, max = 2000) =>
     .trim()
     .slice(0, max);
 
+// La respuesta de la API de Anthropic trae bloques (texto y, segun el modelo, pensamiento).
+// Se cogen TODOS los de tipo texto, no el primero: ese fue el fallo de la pieza piece-claude.
+const textoDe = (v: unknown): unknown => {
+  const bloques = (v as { content?: Array<{ type?: string; text?: string }> })?.content;
+  if (!Array.isArray(bloques)) return v;
+  return bloques.filter((b) => b?.type === 'text' && typeof b.text === 'string').map((b) => b.text).join('\n');
+};
+
+const usoDe = (fuentes: unknown[]) => {
+  for (const f of fuentes) {
+    const u = (f as { usage?: { input_tokens?: number; output_tokens?: number } })?.usage;
+    if (u) return u;
+  }
+  return {} as { input_tokens?: number; output_tokens?: number };
+};
+
 const toList = (src: unknown): Record<string, unknown>[] => {
-  let data: unknown = src;
+  let data: unknown = textoDe(src);
   if (typeof data === 'string') {
     const a = data.search(/[\[{]/);
     const last = Math.max(data.lastIndexOf('}'), data.lastIndexOf(']'));
@@ -136,7 +179,16 @@ export const code = async (inputs: { sources: unknown[]; lookup?: unknown }) => 
     if (rows.length >= MAX_ROWS) break;
   }
   if (rows.length === 0) throw new Error('Ninguna fila valida para __CONTRACT__ (' + discarded + ' descartadas)');
-  return { rows, count: rows.length, discarded, ran_at: ranAt, rows_json: JSON.stringify(rows) };
+  const uso = usoDe(inputs.sources ?? []);
+  return {
+    rows,
+    count: rows.length,
+    discarded,
+    ran_at: ranAt,
+    rows_json: JSON.stringify(rows),
+    tokens_in: uso.input_tokens ?? null,
+    tokens_out: uso.output_tokens ?? null,
+  };
 };
 """
 
@@ -168,6 +220,20 @@ def S(kind, title, **kw):
 
 ERR = {"errorHandlingOptions": {"retryOnFailure": {"value": False}, "continueOnFailure": {"value": False}}}
 
+def http_step(name, title, url, body, headers=None, retry=False):
+    """Paso HTTP. El cuerpo va en body.data: la pieza lo lee de ahí (d.body = i.data) y un
+    body plano se envía VACÍO sin dar error."""
+    return {"name": name, "valid": True, "skip": False, "displayName": title, "type": "PIECE", "settings": {
+        "pieceName": "@activepieces/piece-http", "pieceVersion": "0.11.19", "actionName": "send_request",
+        "propertySettings": {"body": {"type": "MANUAL", "schema": {
+            "data": {"type": "JSON", "required": True, "displayName": "JSON Body"}}}},
+        "input": {"method": "POST", "url": url,
+                  "headers": headers or {"Content-Type": "application/json", "X-AP-Token": AP_TOKEN},
+                  "queryParams": {}, "authType": "NONE", "body_type": "json", "body": {"data": body},
+                  "response_is_binary": False, "followRedirects": True},
+        "errorHandlingOptions": {"retryOnFailure": {"value": retry}, "continueOnFailure": {"value": False}}}}
+
+
 def tabcfg(tab):
     if tab in TAB_GID:
         return f"Nada que hacer: pestaña `{tab}` ya puesta."
@@ -181,13 +247,36 @@ def build_step(spec, name, ids, flow):
 
     k, title = spec["kind"], "%s" % spec["title"]
     base = {"name": name, "valid": False, "skip": False, "displayName": title}
-    if k == "sheet_read":
+    if k == "lee" and spec["tab"] not in LEE:
+        # Sin destino decidido en VrutalOS: antes de inventarle uno, el paso falla a propósito.
+        pista = ("Decide dónde vive «%s» en VrutalOS (tabla de entrada que mantiene el cliente, o "
+                 "colección de work_item que escribe otro flujo) y añádelo al mapa LEE del generador." % spec["tab"])
+        code = (TODO_TS.replace("__TITLE__", title.replace("'", "’")).replace("__KIND__", "context")
+                .replace("__HINT__", pista).replace("__HINT_SHORT__", pista.split(".")[0]))
+        base.update(type="CODE", settings={"input": {}, "sourceCode": {"code": code, "packageJson": "{}"}, **ERR})
+        cfg = "**Sustituir el paso.** " + pista
+    elif k == "lee":
+        cuerpo = dict(LEE[spec["tab"]], job_role_key=flow.role)
+        base = http_step(name, title, f"{FUNCS}/flow-input-read", cuerpo, retry=True)
+        cfg = ("Nada que configurar: lee `%s` de la base del cliente. Solo el secreto "
+               "`AP_INTEGRATION_TOKEN` en la cabecera `X-AP-Token`." % spec["tab"])
+    elif k == "clave":
+        base = http_step(name, title, f"{FUNCS}/integration-get-key", {"provider": "anthropic"}, retry=True)
+        cfg = "Nada que configurar: pide la clave de Anthropic al Vault del cliente. Solo el token en `X-AP-Token`."
+    elif k == "sheet_read_legacy":
         base.update(type="PIECE", settings={
             "pieceName": "@activepieces/piece-google-sheets", "pieceVersion": "0.16.4", "actionName": "get-many-rows",
             "propertySettings": {}, "input": {"auth": SHEETS_AUTH, "includeTeamDrives": False, "spreadsheetId": SPREADSHEET_ID,
                                               "sheetId": TAB_GID.get(spec["tab"]), "first_row_headers": True}, **ERR})
         cfg = tabcfg(spec["tab"]) + f" Conexión `Google · Vrutal-labs` → hoja `{SHEET}` → pestaña `{spec['tab']}`"
-    elif k == "sheet_write":
+    elif k == "entrega":
+        cuerpo = {"job_role_key": flow.role, "collection": ENTREGA[spec["tab"]],
+                  "rows": ref("<<%s.rows>>" % spec["from"]),
+                  "run_ref": "MKT-%s %s" % (flow.code, ref("<<%s.ran_at>>" % spec["from"]))}
+        base = http_step(name, title, f"{FUNCS}/work-items-write", cuerpo)
+        cfg = ("Nada que configurar: entrega a la colección `%s`, que el cliente ve en «Su trabajo». "
+               "Las filas nacen como propuesta si la colección es aprobable." % ENTREGA[spec["tab"]])
+    elif k == "sheet_write_legacy":
         base.update(type="PIECE", settings={
             "pieceName": "@activepieces/piece-google-sheets", "pieceVersion": "0.16.4",
             "actionName": "google-sheets-insert-multiple-rows", "propertySettings": WRITE_SCHEMA,
@@ -197,6 +286,16 @@ def build_step(spec, name, ids, flow):
         cfg = (f"Misma conexión y hoja → pestaña `{spec['tab']}`. **Rows Data Format = `JSON`** y en el campo solo "
                f"`{{{{{ids[spec['from']]}.rows}}}}` (la lista, no `rows_json`)")
     elif k == "rastro":
+        cuerpo = {"job_role_key": flow.role, "task_key": flow.task_main,
+                  "flow_key": "MKT-%s" % flow.code, "outcome": "ok",
+                  "detail": ref("<<%s.count>> registros, <<%s.discarded>> descartados" % (spec["ran"], spec["ran"])),
+                  "provider": "anthropic",
+                  "tokens_in": ref("<<%s.tokens_in>>" % spec["ran"]),
+                  "tokens_out": ref("<<%s.tokens_out>>" % spec["ran"]),
+                  "run_ref": "MKT-%s %s" % (flow.code, ref("<<%s.ran_at>>" % spec["ran"]))}
+        base = http_step(name, title, f"{FUNCS}/run-log-write", cuerpo)
+        cfg = "Nada que configurar: deja la ejecución en `run_log`, con sus tokens. Solo el token en `X-AP-Token`."
+    elif k == "rastro_legacy":
         base.update(type="PIECE", settings={
             "pieceName": "@activepieces/piece-google-sheets", "pieceVersion": "0.16.4", "actionName": "insert_row",
             "propertySettings": RASTRO_SCHEMA, "input": {"auth": SHEETS_AUTH, "includeTeamDrives": False, "spreadsheetId": SPREADSHEET_ID,
@@ -205,6 +304,15 @@ def build_step(spec, name, ids, flow):
                     "C": flow.task_main, "D": "ok", "E": ref("<<%s.count>> registros, <<%s.discarded>> descartados" % (spec["ran"], spec["ran"]))}}, **ERR})
         cfg = "Nada que hacer: pestaña `Rastro` y los campos A–E ya vienen puestos."
     elif k == "claude":
+        # Por HTTP contra la API, no con la pieza: piece-claude@0.5.0 devuelve solo content[0].text
+        # y con los modelos actuales ese bloque no siempre es texto (acaba vacío sin avisar).
+        base = http_step(name, title, "https://api.anthropic.com/v1/messages", {
+            "model": "claude-sonnet-5-5", "max_tokens": spec.get("max", 4000),
+            "system": spec["system"], "messages": [{"role": "user", "content": ref(spec["prompt"])}]},
+            headers={"Content-Type": "application/json", "x-api-key": "{{%s.body.key}}" % ids["clave"],
+                     "anthropic-version": "2023-06-01"}, retry=True)
+        cfg = "Nada que configurar: la clave se resuelve del paso anterior. Revisa el prompt y el modelo"
+    elif k == "claude_legacy":
         base.update(type="PIECE", settings={
             "pieceName": "@activepieces/piece-claude", "pieceVersion": "0.5.0", "actionName": "ask_claude",
             "propertySettings": {}, "input": {
@@ -256,6 +364,11 @@ def trigger_def(flow, secret=None):
 
 def build_flow(flow, secret=None):
     flow.task_main = flow.task.split(" ")[0]
+    # Quien define un flujo no tiene por qué acordarse de pedir la clave: si hay un paso de
+    # Claude y no hay «clave», se inserta justo antes del primero.
+    if any(s["kind"] == "claude" for s in flow.steps) and not any(s["kind"] == "clave" for s in flow.steps):
+        i = next(n for n, s in enumerate(flow.steps) if s["kind"] == "claude")
+        flow.steps.insert(i, S("clave", "Consulta · clave de Anthropic (Vault)", id="clave"))
     trig, trig_cfg = trigger_def(flow, secret)
     # asigna nombres step_N
     ids, names = {}, []
@@ -275,8 +388,7 @@ def build_flow(flow, secret=None):
     trig["nextAction"] = built[0]
     pieces = ["@activepieces/piece-" + p for p in sorted({
         {"schedule": "schedule"}.get(flow.trig[0], "webhook")}
-        | ({"google-sheets"} if any(s["kind"] in ("sheet_read", "sheet_write", "rastro") for s in flow.steps) else set())
-        | ({"claude"} if any(s["kind"] == "claude" for s in flow.steps) else set()))]
+        | ({"http"} if any(s["kind"] in ("lee", "entrega", "rastro", "clave", "claude") for s in flow.steps) else set()))]
     chain = " → ".join(s["title"].split(" · ")[0] for s in [{"title": "Recibe"}] + flow.steps)
     doc = {
         "name": "MKT-%s · %s" % (flow.code, flow.name), "type": "SHARED",
@@ -299,11 +411,15 @@ def readme(flow, cfgs, chain):
            "| Archivo | Qué es |", "|---|---|",
            f"| `{flow.code}.template.json` | Esqueleto importable en Activepieces. El flujo se importa en **borrador** (sin publicar): no se ejecuta solo |", "",
            "## Puesta en marcha", "",
-           f"1. En la hoja `{SHEET}`, crea estas pestañas (cabeceras exactas en la fila 1):", "",
-           "| Pestaña | Cabeceras |", "|---|---|"]
+           "1. Lo que este flujo lee y entrega, todo en la base del cliente:", "",
+           "| Antes (pestaña) | Ahora | Campos |", "|---|---|---|"]
     for tab, hdr in flow.tabs:
-        out.append(f"| `{tab}` | {hdr} |")
-    out += ["", "2. Conexiones que ya existen en la instancia: `Google · Vrutal-labs` y `Claude · Vrutal-labs`.",
+        donde = ("colección `%s` de work_item" % ENTREGA[tab] if tab in ENTREGA
+                 else "entrada `%s`" % LEE[tab]["source"] if tab in LEE
+                 else "`run_log`" if tab == "Rastro" else "—")
+        out.append(f"| `{tab}` | {donde} | {hdr} |")
+    out += ["", "2. Conexiones en Activepieces: **ninguna**. Los pasos HTTP se autentican con `X-AP-Token` "
+            "(el secreto `AP_INTEGRATION_TOKEN` del proyecto) y la clave de Claude se pide al Vault en ejecución.",
             "3. **Flujos → Importar** → `%s.template.json`. Los pasos se configuran en este orden:" % flow.code, "",
             "| Paso | Qué hay que hacer |", "|---|---|"]
     for i, (t, c) in enumerate(cfgs):
@@ -322,7 +438,9 @@ def readme(flow, cfgs, chain):
     out += ["", "## Seguridad", "",
             "- Todo paso «pendiente» lanza un error: un flujo a medio configurar nunca actúa.",
             "- Los prompts solo reciben campos estructurados del cliente; nunca texto libre del cliente (los prompts viven aún dentro del paso: deuda declarada en F4).",
-            "- Las celdas que escribe `Ordena` no pueden empezar por `= + - @` (anti fórmula)."]
+            "- Las celdas que escribe `Ordena` no pueden empezar por `= + - @` (anti fórmula): una fila de `work_item` puede acabar exportada a una hoja.",
+            "- La clave de Claude no vive en el flujo: se pide al Vault del cliente en cada ejecución.",
+            "- Los cuerpos JSON van en el campo **JSON Body** de cada paso HTTP: fuera de ahí se envían vacíos y sin avisar."]
     if flow.trig[0] == "webhook":
         out.append("- El disparador es un webhook con cabecera `X-Vrutal-Token`: pon un secreto real antes de publicar.")
     return "\n".join(out) + "\n"
@@ -342,7 +460,7 @@ FLOWS = [
         S("ordena", "Ordena · a ContentBrief", id="brief", contract="ContentBrief", sources=["trigger.body"]),
         # Resuelto 2026-10-10: igual que F13 step_2 — lee la pestaña Marca, no Qdrant
         # (Memoria del Cuore no tiene contenido real cargado; ver F1.template.json/README).
-        S("sheet_read", "Consulta · memoria de marca", id="marca", tab="Marca"),
+        S("lee", "Consulta · memoria de marca", id="marca", tab="Marca"),
         S("claude", "Decide · redactar borrador", id="borrador", max=3000,
           system=PRE + "Tarea TSK-000010: redactar un borrador a partir de un ContentBrief y la memoria de marca.\nReglas: usa SOLO el brief y la memoria de marca; la prueba (evidence) solo si cita su fuente, si no, omítela; no inventes cifras ni casos; respeta voz y diccionario.\n" + RULES + '{"brief_id":"...","channel":"...","body":"..."}',
           prompt="ContentBrief (JSON):\n<<brief.rows_json>>\n\nMemoria de marca:\n<<marca>>\n\nRedacta el borrador."),
@@ -361,7 +479,7 @@ FLOWS = [
     Flow("F2", "MKT-F2_linkedin", "Programar el post de LinkedIn", "content_promotion", "VRL-MKT-C03", ("webhook", "borrador «para publicar»"),
          "**Primera acción irreversible del sistema.** «Ejecuta» llama a la API de Postiz (self-hosted, por cliente) para crear el post ya programado — Postiz guarda la fecha y publica él mismo, el flujo no espera. Si no apruebas, termina sin publicar. Probar primero en sombra (construir el post, no publicar).",
          [("Calendario", hdr("EditorialPlan")), RAST], [
-        S("sheet_read", "Consulta · fecha en el calendario", id="cal", tab="Calendario"),
+        S("lee", "Consulta · fecha en el calendario", id="cal", tab="Calendario"),
         S("ordena", "Ordena · post LinkedIn", id="post", contract="LinkedInPost", sources=["trigger.body"], lookup="cal", lookup_key="brief_id"),
         S("todo", "Pide permiso · founder: texto + fecha", id="ok", bk="approve",
           hint="Enviar al founder texto + fecha y esperar su respuesta; si no aprueba, el flujo termina aquí. El piece «Approval» es legacy en 0.82: usar las acciones de la pestaña Approvals (confirmado 2026-10-10 que existen en esta instancia: @activepieces/piece-approval). Fail-closed: sin respuesta, no sigue."),
@@ -377,11 +495,11 @@ FLOWS = [
     Flow("F5", "MKT-F5_competidores", "Ficha comparativa de competidores", "marketing_analyst", "TSK-000178", ("schedule", "every_month", {"day_of_the_month": 1, "hour_of_the_day": 9}, "día 1 de cada mes, 09:00"),
          "Patrón AGENT, riesgo bajo, solo lectura.",
          [("Competidores", "`competidor` · `url`"), ("Fichas", hdr("CompetitorCard")), RAST], [
-        S("sheet_read", "Consulta · competidores definidos del cliente", id="comp", tab="Competidores"),
+        S("lee", "Consulta · competidores definidos del cliente", id="comp", tab="Competidores"),
         S("todo", "Consulta · páginas públicas de cada competidor", id="web", bk="context",
           hint="Leer las páginas públicas de cada URL de `{{step_1}}` (precios, mensajes, canales) y devolver una lista de objetos con los campos de CompetitorCard. Solo URLs de la hoja; sin seguir enlaces a otros dominios. Herramienta sin decidir (HTTP + extracción, o agente)."),
         S("ordena", "Ordena · CompetitorCard", id="card", contract="CompetitorCard", sources=["web"]),
-        S("sheet_write", "Ejecuta · escribir la ficha", tab="Fichas", **{"from": "card"}),
+        S("entrega", "Ejecuta · escribir la ficha", tab="Fichas", **{"from": "card"}),
         S("rastro", "Deja rastro", ran="card")]),
 
     Flow("F6", "MKT-F6_lead", "Puntuar un lead y proponer su estado", "marketing_analyst", "VRL-MKT-A01", ("webhook", "lead nuevo"),
@@ -401,26 +519,26 @@ FLOWS = [
     Flow("F7", "MKT-F7_diagnostico", "Diagnóstico por canal frente a su objetivo", "marketing_analyst", "TSK-000189", ("webhook", "foto semanal lista"),
          "Patrón LLM, riesgo bajo, solo lectura. Depende de F3 (la foto semanal), que hoy solo tiene HubSpot como fuente. Encadenar: al terminar F3, llamar a este webhook.",
          [("Métricas", "las escribe F3"), ("Objetivos", "`canal` · `metrica` · `objetivo`"), ("Diagnóstico", hdr("ChannelDiagnosis")), RAST], [
-        S("sheet_read", "Consulta · foto semanal de métricas", id="foto", tab="Métricas"),
-        S("sheet_read", "Consulta · objetivos por canal", id="obj", tab="Objetivos"),
+        S("lee", "Consulta · foto semanal de métricas", id="foto", tab="Métricas"),
+        S("lee", "Consulta · objetivos por canal", id="obj", tab="Objetivos"),
         S("claude", "Decide · resultado frente al objetivo, por canal", id="diag", max=3000,
           system=PRE + "Tarea TSK-000189: comparar el resultado de cada canal con su objetivo.\nReglas: status = above si supera el objetivo, on si está dentro de ±5 %, below si no llega; un canal sin objetivo no se diagnostica; no inventes valores.\n" + RULES + shape("ChannelDiagnosis"),
           prompt="Foto semanal (filas):\n<<foto>>\n\nObjetivos por canal (filas):\n<<obj>>\n\nDiagnostica."),
         S("ordena", "Ordena · ChannelDiagnosis", id="ord", contract="ChannelDiagnosis", sources=["diag"]),
-        S("sheet_write", "Ejecuta · escribir el diagnóstico", tab="Diagnóstico", **{"from": "ord"}),
+        S("entrega", "Ejecuta · escribir el diagnóstico", tab="Diagnóstico", **{"from": "ord"}),
         S("rastro", "Deja rastro", ran="ord")],
          deviations=["Se añade un paso «Ordena» (el diagrama no lo dibuja) para validar el JSON de Claude antes de escribir filas."]),
 
     Flow("F8", "MKT-F8_informe", "Informe semanal de marketing", "marketing_analyst", "TSK-000081", ("webhook", "foto y diagnóstico listos"),
          "Patrón LLM, riesgo bajo, reversible, solo informe interno. Encadenar tras F7.",
          [("Métricas", "las escribe F3"), ("Diagnóstico", "las escribe F7"), ("Informes", hdr("WeeklyReport")), RAST], [
-        S("sheet_read", "Consulta · foto semanal", id="foto", tab="Métricas"),
-        S("sheet_read", "Consulta · diagnóstico por canal", id="diag", tab="Diagnóstico"),
+        S("lee", "Consulta · foto semanal", id="foto", tab="Métricas"),
+        S("lee", "Consulta · diagnóstico por canal", id="diag", tab="Diagnóstico"),
         S("claude", "Decide · tres conclusiones accionables", id="conc", max=2500,
           system=PRE + "Tarea TSK-000081: informe semanal interno con exactamente tres conclusiones accionables, ordenadas por impacto (rank 1 a 3).\nReglas: cada conclusión cita el canal y la cifra de los datos; cada acción es concreta y de la semana siguiente; sin relleno.\n" + RULES + shape("WeeklyReport"),
           prompt="Foto semanal (filas):\n<<foto>>\n\nDiagnóstico por canal (filas):\n<<diag>>\n\nRedacta las tres conclusiones."),
         S("ordena", "Ordena · WeeklyReport", id="rep", contract="WeeklyReport", sources=["conc"]),
-        S("sheet_write", "Ejecuta · entregar el informe (hoja Informes)", tab="Informes", **{"from": "rep"}),
+        S("entrega", "Ejecuta · entregar el informe (hoja Informes)", tab="Informes", **{"from": "rep"}),
         S("rastro", "Deja rastro", ran="rep")],
          deviations=["«Consulta» del diagrama es un solo bloque; aquí son dos lecturas de hoja (foto y diagnóstico).",
                      "La entrega al destinatario interno se resuelve, de momento, escribiendo el informe en la pestaña `Informes` (cada hoja es una tabla). Email o Slack, cuando se decida."]),
@@ -436,18 +554,18 @@ FLOWS = [
           system=PRE + "Tarea TSK-000163: priorizar oportunidades de búsqueda.\nReglas: cada oportunidad cita su señal (dato recibido) y su fuente; priority = high, medium o low según el dato; máximo 15.\n" + RULES + shape("OpportunityList"),
           prompt="Posiciones y consultas propias:\n<<gsc>>\n\nTendencias y competidores:\n<<tend>>\n\nPrioriza las oportunidades."),
         S("ordena", "Ordena · OpportunityList", id="ord", contract="OpportunityList", sources=["opp"]),
-        S("sheet_write", "Ejecuta · escribir las oportunidades", tab="Oportunidades", **{"from": "ord"}),
+        S("entrega", "Ejecuta · escribir las oportunidades", tab="Oportunidades", **{"from": "ord"}),
         S("rastro", "Deja rastro", ran="ord")]),
 
     Flow("F10", "MKT-F10_keyword_pagina", "Asignar keywords a páginas", "search_marketing", "TSK-000128", ("webhook", "KeywordSet listo"),
          "Patrón LLM, riesgo bajo, reversible. Alimenta F13.",
          [("Páginas", "`url` · `titulo` · `tema`"), ("Briefs", hdr("ContentBrief+page")), RAST], [
-        S("sheet_read", "Consulta · páginas existentes del sitio", id="pags", tab="Páginas"),
+        S("lee", "Consulta · páginas existentes del sitio", id="pags", tab="Páginas"),
         S("claude", "Decide · keyword → página existente o nueva", id="asig", max=6000,
           system=PRE + "Tarea TSK-000128: asignar cada keyword a una página existente o proponer una nueva.\nReglas: si una página existente cubre el tema, target_page es su URL; si no, `NUEVA: <título propuesto>`; no inventes URLs; evidence vacío salvo fuente citada; brief_id estable con la forma `kw-<keyword en minúsculas con guiones>`.\n" + RULES + shape("ContentBrief+page"),
           prompt="KeywordSet recibido (JSON):\n<<trigger.body>>\n\nPáginas existentes (filas):\n<<pags>>\n\nAsigna."),
         S("ordena", "Ordena · ContentBrief", id="ord", contract="ContentBrief+page", sources=["asig"]),
-        S("sheet_write", "Ejecuta · escribir los briefs", tab="Briefs", **{"from": "ord"}),
+        S("entrega", "Ejecuta · escribir los briefs", tab="Briefs", **{"from": "ord"}),
         S("rastro", "Deja rastro", ran="ord")],
          deviations=["El KeywordSet llega en el cuerpo del webhook; el diagrama no dice cómo. Alternativa: leer la pestaña `Keywords` con `estado = propuesta` (F4 las escribe ahí). A decidir.",
                      "Se propone el campo `target_page` en ContentBrief (hoy no existe): sería ContentBrief@2."]),
@@ -469,14 +587,14 @@ FLOWS = [
     Flow("F12", "MKT-F12_calendario", "Calendario editorial a 4 semanas", "content_promotion", "VRL-MKT-C01", ("schedule", "every_week", {"day_of_the_week": 1, "hour_of_the_day": 10}, "cada lunes, 10:00"),
          "Patrón LLM, riesgo bajo, reversible. Cadena: KeywordSet (F4) → calendario → ContentBrief (F13).",
          [("Hallazgos", "los escribe F11"), ("Keywords", "las escribe F4"), ("Calendario", hdr("EditorialPlan")), RAST], [
-        S("sheet_read", "Consulta · hallazgos", id="hall", tab="Hallazgos"),
-        S("sheet_read", "Consulta · KeywordSet", id="kw", tab="Keywords"),
-        S("sheet_read", "Consulta · calendario actual", id="cal", tab="Calendario"),
+        S("lee", "Consulta · hallazgos", id="hall", tab="Hallazgos"),
+        S("lee", "Consulta · KeywordSet", id="kw", tab="Keywords"),
+        S("lee", "Consulta · calendario actual", id="cal", tab="Calendario"),
         S("claude", "Decide · qué piezas y en qué fechas", id="plan", max=5000,
           system=PRE + "Tarea VRL-MKT-C01: plan editorial a 4 semanas.\nReglas: no repitas piezas que ya están en el calendario actual; cada pieza usa una keyword del KeywordSet; fechas ISO (AAAA-MM-DD) dentro de las 4 próximas semanas; week = AAAA-Www; máximo 2 piezas por semana por canal.\n" + RULES + shape("EditorialPlan"),
           prompt="Hallazgos del sitio (filas):\n<<hall>>\n\nKeywordSet (filas):\n<<kw>>\n\nCalendario actual (filas):\n<<cal>>\n\nPropón el plan."),
         S("ordena", "Ordena · EditorialPlan", id="ord", contract="EditorialPlan", sources=["plan"]),
-        S("sheet_write", "Ejecuta · actualizar el calendario", tab="Calendario", **{"from": "ord"}),
+        S("entrega", "Ejecuta · actualizar el calendario", tab="Calendario", **{"from": "ord"}),
         S("rastro", "Deja rastro", ran="ord")],
          deviations=["«Consulta» del diagrama es un solo bloque; aquí son tres lecturas de hoja.",
                      "F12 y F2 comparten la pestaña `Calendario`: F2 busca por `brief_id`, que F12 deja vacío y F13 genera después. Decidir quién asigna el `brief_id` (propuesta: F12, con la forma `<semana>-<canal>-<n>`)."]),
@@ -484,27 +602,27 @@ FLOWS = [
     Flow("F13", "MKT-F13_brief", "ContentBrief de cada pieza", "content_promotion", "TSK-000197", ("webhook", "entrada nueva en el calendario"),
          "Patrón LLM, riesgo bajo, reversible. **La prueba cita su fuente o queda vacía**: el rol nunca inventa cifras ni casos (el prompt lo pide y el paso Ordena lo hace cumplir).",
          [("Perfil", "`campo` · `valor` (ya existe)"), ("Marca", "`campo` · `valor` (voz, diccionario)"), ("Briefs", hdr("ContentBrief")), RAST], [
-        S("sheet_read", "Consulta · ICP", id="icp", tab="Perfil"),
-        S("sheet_read", "Consulta · voz de marca", id="voz", tab="Marca"),
+        S("lee", "Consulta · ICP", id="icp", tab="Perfil"),
+        S("lee", "Consulta · voz de marca", id="voz", tab="Marca"),
         S("claude", "Decide · objetivo, mensaje, prueba y CTA", id="brief", max=3000,
           system=PRE + "Tarea TSK-000197: ContentBrief de una pieza.\nReglas: evidence solo si cita su fuente (URL o `Fuente: ...`) de los datos recibidos; si no hay, déjala vacía; nunca inventes cifras ni casos; brief_id = el de la entrada si existe; target_keyword y channel salen de la entrada del calendario.\n" + RULES + shape("ContentBrief"),
           prompt="Entrada del calendario (JSON):\n<<trigger.body>>\n\nICP (filas):\n<<icp>>\n\nVoz de marca (filas):\n<<voz>>\n\nRedacta el ContentBrief."),
         S("ordena", "Ordena · ContentBrief", id="ord", contract="ContentBrief", sources=["brief"]),
-        S("sheet_write", "Ejecuta · guardar el brief", tab="Briefs", **{"from": "ord"}),
+        S("entrega", "Ejecuta · guardar el brief", tab="Briefs", **{"from": "ord"}),
         S("rastro", "Deja rastro", ran="ord")],
          deviations=["«Consulta» del diagrama es un solo bloque; aquí son dos lecturas de hoja (ICP y voz). La keyword objetivo viene en el cuerpo del webhook."]),
 
     Flow("F14", "MKT-F14_adaptacion", "Adaptar una pieza aprobada a cada canal", "content_promotion", "VRL-MKT-C02", ("webhook", "pieza aprobada"),
          "Patrón LLM, riesgo medio, reversible. **De cara al público: cada adaptación pasa por «Pide permiso».**",
          [("Formatos", "`canal` · `longitud_max` · `reglas`"), ("Borradores", hdr("ContentDraft")), RAST], [
-        S("sheet_read", "Consulta · reglas de formato y longitud por canal", id="fmt", tab="Formatos"),
+        S("lee", "Consulta · reglas de formato y longitud por canal", id="fmt", tab="Formatos"),
         S("claude", "Decide · adaptar la pieza a cada canal", id="adapt", max=6000,
           system=PRE + "Tarea VRL-MKT-C02: adaptar una pieza aprobada a cada canal listado.\nReglas: respeta longitud y formato del canal; no añadas cifras, casos ni afirmaciones que no estén en la pieza; una adaptación por canal; status = draft; version = 1.\n" + RULES + shape("ContentDraft"),
           prompt="Pieza aprobada (JSON):\n<<trigger.body>>\n\nReglas por canal (filas):\n<<fmt>>\n\nAdapta."),
         S("ordena", "Ordena · ContentDraft por canal", id="ord", contract="ContentDraft", sources=["adapt"]),
         S("todo", "Pide permiso · aprobar cada adaptación", id="ok", bk="approve",
           hint="Enviar cada adaptación (`{{step_3.rows}}`) al founder y esperar una respuesta por adaptación; solo las aprobadas siguen. Fail-closed: sin respuesta, no se guarda nada como aprobado."),
-        S("sheet_write", "Ejecuta · guardar las versiones aprobadas", tab="Borradores", **{"from": "ord"}),
+        S("entrega", "Ejecuta · guardar las versiones aprobadas", tab="Borradores", **{"from": "ord"}),
         S("rastro", "Deja rastro", ran="ord")],
          deviations=["Con el paso de permiso pendiente, «Guardar las versiones aprobadas» hoy escribiría todas las filas de `{{step_3.rows}}`: al configurar el permiso hay que pasar al paso de escritura solo las aprobadas."]),
 ]
@@ -517,7 +635,16 @@ def main():
     ready = None
     if "--ready" in sys.argv:  # copias con secreto generado, FUERA del repo (los secretos no se versionan)
         ready = Path(sys.argv[sys.argv.index("--ready") + 1]); ready.mkdir(parents=True, exist_ok=True)
+    # F1, F2 y F13 se mantienen a mano y el generador no sabe expresar todo lo
+    # que tienen: F1 encadena dos llamadas a la API con un extractor entre medias y crea un Google
+    # Doc; F2 lleva la aprobación y el HTTP a Postiz (12 pasos frente a los 6 que sabe generar);
+    # F13 trae su artefacto en blocks/. Regenerarlos los pisaría. Para rehacerlos de verdad,
+    # primero hay que enseñarle esos pasos al generador.
+    HECHOS_A_MANO = {"F1", "F2", "F13"}
     for flow in FLOWS:
+        if flow.code in HECHOS_A_MANO and not ready:
+            print("SALTADO", flow.code, "(mantenido a mano: lo pisaría)")
+            continue
         flow.doc = DOCS[flow.code]
         if ready:
             doc, _, _ = build_flow(flow, secrets.token_hex(24))

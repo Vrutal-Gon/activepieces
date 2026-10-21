@@ -70,7 +70,18 @@
               "pieceName": "@activepieces/piece-http",
               "pieceVersion": "0.11.19",
               "actionName": "send_request",
-              "propertySettings": {},
+              "propertySettings": {
+                "body": {
+                  "type": "MANUAL",
+                  "schema": {
+                    "data": {
+                      "type": "JSON",
+                      "required": true,
+                      "displayName": "JSON Body"
+                    }
+                  }
+                }
+              },
               "input": {
                 "method": "POST",
                 "url": "https://rgauumxztblwurzebmsa.supabase.co/functions/v1/integration-get-key",
@@ -82,7 +93,9 @@
                 "authType": "NONE",
                 "body_type": "json",
                 "body": {
-                  "provider": "hubspot"
+                  "data": {
+                    "provider": "hubspot"
+                  }
                 },
                 "response_is_binary": false,
                 "followRedirects": true
@@ -106,7 +119,18 @@
                 "pieceName": "@activepieces/piece-http",
                 "pieceVersion": "0.11.19",
                 "actionName": "send_request",
-                "propertySettings": {},
+                "propertySettings": {
+                  "body": {
+                    "type": "MANUAL",
+                    "schema": {
+                      "data": {
+                        "type": "JSON",
+                        "required": true,
+                        "displayName": "JSON Body"
+                      }
+                    }
+                  }
+                },
                 "input": {
                   "method": "POST",
                   "url": "https://api.hubapi.com/crm/v3/objects/contacts/search",
@@ -118,27 +142,29 @@
                   "authType": "NONE",
                   "body_type": "json",
                   "body": {
-                    "filterGroups": [
-                      {
-                        "filters": [
-                          {
-                            "propertyName": "createdate",
-                            "operator": "GTE",
-                            "value": "{{step_1.start_ms}}"
-                          },
-                          {
-                            "propertyName": "createdate",
-                            "operator": "LT",
-                            "value": "{{step_1.end_ms}}"
-                          }
-                        ]
-                      }
-                    ],
-                    "properties": [
-                      "hs_analytics_source",
-                      "hs_analytics_source_data_1"
-                    ],
-                    "limit": 100
+                    "data": {
+                      "filterGroups": [
+                        {
+                          "filters": [
+                            {
+                              "propertyName": "createdate",
+                              "operator": "GTE",
+                              "value": "{{step_1.start_ms}}"
+                            },
+                            {
+                              "propertyName": "createdate",
+                              "operator": "LT",
+                              "value": "{{step_1.end_ms}}"
+                            }
+                          ]
+                        }
+                      ],
+                      "properties": [
+                        "hs_analytics_source",
+                        "hs_analytics_source_data_1"
+                      ],
+                      "limit": 100
+                    }
                   },
                   "response_is_binary": false,
                   "followRedirects": true

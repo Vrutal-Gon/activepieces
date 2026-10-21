@@ -1,7 +1,9 @@
 // Edge Function: un flujo de Activepieces de esta misma instancia lee la clave de una
 // integración — de dos sitios distintos según de quién es la clave:
-//  - `hubspot`: clave que el Admin pegó en VrutalOS → Integraciones, vive en el Vault de
-//    ESTE cliente (integration_read_secret, local).
+//  - `hubspot` y `anthropic`: claves que el Admin pegó en VrutalOS → Integraciones, viven en
+//    el Vault de ESTE cliente (integration_read_secret, local). `anthropic` se añadió el
+//    2026-10-19: los flujos llaman a la API de Claude por HTTP en vez de usar la pieza, que
+//    devuelve solo el primer bloque de la respuesta y se queda vacía con los modelos actuales.
 //  - `postiz`: infraestructura que Vrutal provisiona, el cliente nunca la pega ni la ve
 //    (migración 025) — vive en el Vault de VRUTAL1ST, se pide por servidor a servidor con
 //    el token de esta instancia (mismo canal que integration-social-notify/support-ticket-*).
@@ -17,7 +19,7 @@
 // (los mismos que ya usa integration-social-notify).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const LOCAL_VAULT_PROVIDERS = new Set(['hubspot']);
+const LOCAL_VAULT_PROVIDERS = new Set(['hubspot', 'anthropic']);
 const VRUTAL1ST_PROVIDERS = new Set(['postiz']);
 
 function reply(status: number, body: Record<string, unknown>): Response {

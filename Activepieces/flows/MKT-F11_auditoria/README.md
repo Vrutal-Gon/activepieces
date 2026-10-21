@@ -14,14 +14,14 @@ Patrón SCRIPT, riesgo bajo, solo lectura. **Bloqueado** en parte: indexación y
 
 ## Puesta en marcha
 
-1. En la hoja `Vrutal-labs · Marketing`, crea estas pestañas (cabeceras exactas en la fila 1):
+1. Lo que este flujo lee y entrega, todo en la base del cliente:
 
-| Pestaña | Cabeceras |
-|---|---|
-| `Hallazgos` | `fecha` · `url` · `issue_type` · `detail` · `severity` · `source` |
-| `Rastro` | `fecha` · `flujo` · `tarea` · `resultado` · `detalle` |
+| Antes (pestaña) | Ahora | Campos |
+|---|---|---|
+| `Hallazgos` | colección `hallazgos` de work_item | `fecha` · `url` · `issue_type` · `detail` · `severity` · `source` |
+| `Rastro` | `run_log` | `fecha` · `flujo` · `tarea` · `resultado` · `detalle` |
 
-2. Conexiones que ya existen en la instancia: `Google · Vrutal-labs` y `Claude · Vrutal-labs`.
+2. Conexiones en Activepieces: **ninguna**. Los pasos HTTP se autentican con `X-AP-Token` (el secreto `AP_INTEGRATION_TOKEN` del proyecto) y la clave de Claude se pide al Vault en ejecución.
 3. **Flujos → Importar** → `F11.template.json`. Los pasos se configuran en este orden:
 
 | Paso | Qué hay que hacer |
@@ -32,7 +32,7 @@ Patrón SCRIPT, riesgo bajo, solo lectura. **Bloqueado** en parte: indexación y
 | `step_3` Ordena · SiteFinding | Sin configurar: ya valida el contrato. Revisa que `sources` apunte a la salida correcta |
 | `step_4` Decide · prioridad de cada hallazgo | **Sustituir el paso.** Asignar `severity` (high|medium|low) a cada fila de `{{step_3.rows}}` con reglas deterministas (patrón SCRIPT, sin LLM). Umbrales sin definir. |
 | `step_5` Ejecuta · abrir incidencias priorizadas | **Sustituir el paso.** Abrir incidencias priorizadas en la herramienta de tareas (sin decidir) y/o escribir en la pestaña `Hallazgos`. |
-| `step_6` Deja rastro | Nada que hacer: pestaña `Rastro` y los campos A–E ya vienen puestos. |
+| `step_6` Deja rastro | Nada que configurar: deja la ejecución en `run_log`, con sus tokens. Solo el token en `X-AP-Token`. |
 
 4. **Probar flujo** y comprobar la salida de cada paso antes de publicar.
 
@@ -51,4 +51,6 @@ Patrón SCRIPT, riesgo bajo, solo lectura. **Bloqueado** en parte: indexación y
 
 - Todo paso «pendiente» lanza un error: un flujo a medio configurar nunca actúa.
 - Los prompts solo reciben campos estructurados del cliente; nunca texto libre del cliente (los prompts viven aún dentro del paso: deuda declarada en F4).
-- Las celdas que escribe `Ordena` no pueden empezar por `= + - @` (anti fórmula).
+- Las celdas que escribe `Ordena` no pueden empezar por `= + - @` (anti fórmula): una fila de `work_item` puede acabar exportada a una hoja.
+- La clave de Claude no vive en el flujo: se pide al Vault del cliente en cada ejecución.
+- Los cuerpos JSON van en el campo **JSON Body** de cada paso HTTP: fuera de ahí se envían vacíos y sin avisar.

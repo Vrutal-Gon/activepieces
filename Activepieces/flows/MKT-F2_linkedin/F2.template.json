@@ -142,7 +142,18 @@
                     "pieceName": "@activepieces/piece-http",
                     "pieceVersion": "0.11.19",
                     "actionName": "send_request",
-                    "propertySettings": {},
+                    "propertySettings": {
+                      "body": {
+                        "type": "MANUAL",
+                        "schema": {
+                          "data": {
+                            "type": "JSON",
+                            "required": true,
+                            "displayName": "JSON Body"
+                          }
+                        }
+                      }
+                    },
                     "input": {
                       "method": "POST",
                       "url": "https://rgauumxztblwurzebmsa.supabase.co/functions/v1/approval-create",
@@ -154,13 +165,15 @@
                       "authType": "NONE",
                       "body_type": "json",
                       "body": {
-                        "job_role_key": "content_promotion",
-                        "task_key": "TSK-001300",
-                        "payload": {
-                          "body": "{{step_2.rows[0].body}}",
-                          "publish_at": "{{step_2.rows[0].publish_at}}"
-                        },
-                        "resume_url": "{{step_7.resumeUrl}}"
+                        "data": {
+                          "job_role_key": "content_promotion",
+                          "task_key": "TSK-001300",
+                          "payload": {
+                            "body": "{{step_2.rows[0].body}}",
+                            "publish_at": "{{step_2.rows[0].publish_at}}"
+                          },
+                          "resume_url": "{{step_7.resumeUrl}}"
+                        }
                       },
                       "response_is_binary": false,
                       "followRedirects": true
@@ -201,7 +214,18 @@
                         "pieceName": "@activepieces/piece-http",
                         "pieceVersion": "0.11.19",
                         "actionName": "send_request",
-                        "propertySettings": {},
+                        "propertySettings": {
+                          "body": {
+                            "type": "MANUAL",
+                            "schema": {
+                              "data": {
+                                "type": "JSON",
+                                "required": true,
+                                "displayName": "JSON Body"
+                              }
+                            }
+                          }
+                        },
                         "input": {
                           "method": "POST",
                           "url": "https://rgauumxztblwurzebmsa.supabase.co/functions/v1/approval-result",
@@ -213,7 +237,9 @@
                           "authType": "NONE",
                           "body_type": "json",
                           "body": {
-                            "approval_id": "{{step_8.body.approval_id}}"
+                            "data": {
+                              "approval_id": "{{step_8.body.approval_id}}"
+                            }
                           },
                           "response_is_binary": false,
                           "followRedirects": true
@@ -258,7 +284,18 @@
                             "pieceName": "@activepieces/piece-http",
                             "pieceVersion": "0.11.19",
                             "actionName": "send_request",
-                            "propertySettings": {},
+                            "propertySettings": {
+                              "body": {
+                                "type": "MANUAL",
+                                "schema": {
+                                  "data": {
+                                    "type": "JSON",
+                                    "required": true,
+                                    "displayName": "JSON Body"
+                                  }
+                                }
+                              }
+                            },
                             "input": {
                               "method": "POST",
                               "url": "https://rgauumxztblwurzebmsa.supabase.co/functions/v1/integration-get-key",
@@ -270,7 +307,9 @@
                               "authType": "NONE",
                               "body_type": "json",
                               "body": {
-                                "provider": "postiz"
+                                "data": {
+                                  "provider": "postiz"
+                                }
                               },
                               "response_is_binary": false,
                               "followRedirects": true
@@ -294,7 +333,18 @@
                               "pieceName": "@activepieces/piece-http",
                               "pieceVersion": "0.11.19",
                               "actionName": "send_request",
-                              "propertySettings": {},
+                              "propertySettings": {
+                                "body": {
+                                  "type": "MANUAL",
+                                  "schema": {
+                                    "data": {
+                                      "type": "JSON",
+                                      "required": true,
+                                      "displayName": "JSON Body"
+                                    }
+                                  }
+                                }
+                              },
                               "input": {
                                 "method": "POST",
                                 "url": "PENDIENTE_URL_POSTIZ/public/v1/posts",
@@ -306,25 +356,27 @@
                                 "authType": "NONE",
                                 "body_type": "json",
                                 "body": {
-                                  "type": "schedule",
-                                  "shortLink": false,
-                                  "date": "{{step_2.rows[0].publish_at}}",
-                                  "tags": [],
-                                  "posts": [
-                                    {
-                                      "integration": {
-                                        "id": "PENDIENTE_INTEGRATION_ID_LINKEDIN"
-                                      },
-                                      "value": [
-                                        {
-                                          "content": "{{step_2.rows[0].body}}"
+                                  "data": {
+                                    "type": "schedule",
+                                    "shortLink": false,
+                                    "date": "{{step_2.rows[0].publish_at}}",
+                                    "tags": [],
+                                    "posts": [
+                                      {
+                                        "integration": {
+                                          "id": "PENDIENTE_INTEGRATION_ID_LINKEDIN"
+                                        },
+                                        "value": [
+                                          {
+                                            "content": "{{step_2.rows[0].body}}"
+                                          }
+                                        ],
+                                        "settings": {
+                                          "__type": "linkedin-page"
                                         }
-                                      ],
-                                      "settings": {
-                                        "__type": "linkedin-page"
                                       }
-                                    }
-                                  ]
+                                    ]
+                                  }
                                 },
                                 "response_is_binary": false,
                                 "followRedirects": true
