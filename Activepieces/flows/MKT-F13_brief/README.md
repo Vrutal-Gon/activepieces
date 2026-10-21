@@ -85,6 +85,18 @@ avisar.
 2. **En VrutalOS**: el Especialista de Contenido tiene la pestaña **Briefs** con N filas en estado
    **propuesta**, y se pueden aprobar o rechazar. En **Consumo**, la ejecución con sus tokens.
 3. **Publicar**, y borrar el flujo viejo si quedó duplicado al importar.
+
+> **Probado de punta a punta el 2026-10-21**, con el cuerpo de arriba contra la URL real del flujo
+> publicado (`7Bqk5bwqVT1jeEyzyht3S`): ejecución `PRODUCTION` `SUCCEEDED`, `step_1` y `step_2` con
+> `count: 16`, Claude 200, `Ordena` 1 fila y 0 descartadas, `step_5` `{"collection":"briefs","written":1}`,
+> `step_6` `{"ok":true}`. En la base: una fila en `work_item` como `proposed` (sin `link_url`, como
+> toca) y el rastro en `run_log` con 2.179/469 tokens. El gate del webhook también: token malo y
+> sin cabecera devuelven 200 pero **no crean ejecución**.
+>
+> **Ojo con «Probar flujo»**: las tres ejecuciones `TESTING` previas salieron `SUCCEEDED` con la
+> salida de cada paso **vacía** y no escribieron nada. Una ejecución de prueba de un flujo con
+> webhook puede correr con datos de muestra: no prueba nada. La evidencia es la ejecución
+> `PRODUCTION` y la fila en la base (ver la tabla de trampas de la GUIA).
 4. Comprobación de que de verdad se fue de Sheets: en la versión publicada no queda ningún paso con
    `piece-google-sheets`.
 
