@@ -8,7 +8,8 @@
 # Qué se ve desde internet (vía edge, HTTPS; en local, http://<slug>.localhost:8088):
 #   https://<slug>.vrutal-labs.com              → app VrutalOS (perfil "app")
 #   https://<slug>-flows.vrutal-labs.com/api/v1/webhooks/...  → SOLO webhooks de Activepieces
-# Qué NO se ve nunca desde internet: la interfaz de Activepieces, Postgres, Redis, Qdrant.
+#   https://<slug>-tareas.vrutal-labs.com/api/{project,column,task,comment}  → SOLO lo que leen y escriben board-sync y board-write
+# Qué NO se ve nunca desde internet: la interfaz de Activepieces, la de Kaneo, Postgres, Redis, Qdrant.
 # La interfaz de Activepieces es solo para el staff, por túnel SSH a 127.0.0.1:${AP_ADMIN_PORT}.
 # ─────────────────────────────────────────────────────────────
 name: ${CLIENT_SLUG:?falta CLIENT_SLUG}
@@ -354,6 +355,73 @@ services:
       # Solo en la red interna: no sale a `edge`, así nunca es alcanzable desde internet.
       - data
 
+  # ── Tablero de trabajo: Kaneo (perfil "tareas", uno por cliente) ──
+  # Donde el equipo de Vrutal gestiona el trabajo de este cliente. El cliente NUNCA entra aquí:
+  # lo ve en VrutalOS → Tablero, con el diseño de Vrutal, leyendo el espejo de su propia base
+  # (`board_card`). Interfaz solo para el staff, por túnel SSH, igual que Activepieces y Postiz.
+  # De internet solo cuelgan las cuatro rutas que necesitan las Edge Functions `board-sync` y
+  # `board-write`: publicar `/api` entero publicaría también `/api/auth` (alta y sesión).
+  kaneo:
+    profiles: ["tareas"]
+    # Fijada por digest (LAB08 cap. 5: nunca "latest"). Versión 2.46.2, digest resuelto contra
+    # ghcr.io el 2026-10-22. Al subir de versión, resolver el digest nuevo, no quitar el pin.
+    image: ghcr.io/usekaneo/kaneo:2.46.2@sha256:f44be9aa22546f95c59076bee86678bffcaf5e5d4b960c58a107ad1a05cd1f90
+    restart: unless-stopped
+    mem_limit: 512m
+    environment:
+      # La imagen deriva KANEO_API_URL de esta: el API vive en el mismo origen, bajo /api.
+      KANEO_CLIENT_URL: ${PUBLIC_SCHEME:-https}://${CLIENT_SLUG}-tareas.${BASE_DOMAIN}${PUBLIC_PORT_SUFFIX:-}
+      DATABASE_URL: postgresql://kaneo:${KANEO_POSTGRES_PASSWORD:?}@kaneo_postgres:5432/kaneo
+      AUTH_SECRET: ${KANEO_AUTH_SECRET:?}
+      # El alta es manual y de una vez (cuenta del staff, workspace, un proyecto por
+      # especialista, API key). Mientras se hace, se ponen estas dos a "false" en el .env del
+      # cliente y se reinicia; después vuelven a true y nadie más se registra desde internet.
+      DISABLE_REGISTRATION: ${KANEO_DISABLE_REGISTRATION:-true}
+      DISABLE_WORKSPACE_CREATION: ${KANEO_DISABLE_WORKSPACE_CREATION:-true}
+      DISABLE_GUEST_ACCESS: "true"
+    ports:
+      # Igual que Activepieces y Postiz: solo localhost del VPS, el staff entra por túnel SSH.
+      - "127.0.0.1:${KANEO_ADMIN_PORT:?}:5173"
+    healthcheck:
+      test: ["CMD", "wget", "-Y", "off", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:5173/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
+    depends_on:
+      kaneo_postgres:
+        condition: service_healthy
+    networks:
+      - data
+      - edge
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      # Desde internet, SOLO lo que leen y escriben board-sync y board-write — nunca la
+      # interfaz, nunca /api/auth, nunca /api/admin.
+      - traefik.http.routers.${CLIENT_SLUG}-tareas.rule=Host(`${CLIENT_SLUG}-tareas.${BASE_DOMAIN}`) && (PathPrefix(`/api/project`) || PathPrefix(`/api/column`) || PathPrefix(`/api/task`) || PathPrefix(`/api/comment`))
+      - traefik.http.routers.${CLIENT_SLUG}-tareas.entrypoints=${EDGE_ENTRYPOINT:-websecure}
+      - traefik.http.services.${CLIENT_SLUG}-tareas.loadbalancer.server.port=5173
+
+  kaneo_postgres:
+    profiles: ["tareas"]
+    image: postgres:17-alpine
+    restart: unless-stopped
+    mem_limit: 256m
+    environment:
+      POSTGRES_DB: kaneo
+      POSTGRES_USER: kaneo
+      POSTGRES_PASSWORD: ${KANEO_POSTGRES_PASSWORD:?}
+    volumes:
+      - kaneo_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kaneo -d kaneo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - data
+
   # ── App del cliente: VrutalOS (todavía no construida; se activa con --profile app) ──
   vrutalos_web:
     profiles: ["app"]
@@ -386,6 +454,7 @@ volumes:
   temporal_postgres_data:
   temporal_elasticsearch_data:
   postiz_agent_state:
+  kaneo_postgres_data:
 
 networks:
   # Bases de datos: red sin salida a internet. Solo Activepieces llega hasta ellas.
