@@ -38,3 +38,17 @@ export function specialistInitials(name: string): string {
 
 /** Etiqueta tolerante: si el servidor trae un valor nuevo que aún no conocemos, se muestra tal cual. */
 export const labelOf = (map: Record<string, string>, key: string) => map[key] ?? key;
+
+/** Cuántos tonos hay para distinguir agentes en el tablero. */
+export const AGENT_TONES = 6;
+
+/**
+ * Tono estable de un agente, derivado de su `job_role_key`. Estable a propósito: si se
+ * derivara de la posición en la lista, contratar un especialista nuevo le cambiaría el color a
+ * todos los demás, y el color es justo lo que permite reconocerlos sin leer.
+ */
+export function agentTone(jobRoleKey: string): number {
+  let h = 0;
+  for (const ch of jobRoleKey) h = (h * 31 + ch.charCodeAt(0)) % 997;
+  return h % AGENT_TONES;
+}

@@ -1,0 +1,226 @@
+/* Tablero. Columnas en fila con scroll horizontal: en un móvil se arrastra, no se apilan —
+   apiladas se pierde justo lo que aporta un tablero, ver las fases a la vez. */
+
+.board__specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.board__specs .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.chip__count {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--text-secondary);
+}
+
+/* Un color por agente, para reconocerlo sin leer. No son colores de marca: la marca es el
+   violeta de acción y el lima, y los dos tienen significado (acción, activo). Estos son
+   etiquetas, así que van desaturados y en fondo tenue — nunca compiten con un botón. El tono lo
+   fija `agentTone()` a partir del `job_role_key`, no de la posición en la lista. */
+.agente--0 { --agente: 200; }
+.agente--1 { --agente: 330; }
+.agente--2 { --agente: 25; }
+.agente--3 { --agente: 160; }
+.agente--4 { --agente: 285; }
+.agente--5 { --agente: 45; }
+
+.agente__punto {
+  display: inline-block;
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: var(--space-1);
+  border-radius: 50%;
+  background: hsl(var(--agente, 200) 55% 62%);
+  vertical-align: baseline;
+}
+
+.board__quien {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.board__agente {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--text-2xs);
+  color: var(--text-secondary);
+}
+
+.board {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(240px, 1fr);
+  gap: var(--space-4);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+}
+
+.board__col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.board__colhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.board__count {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.board__vacia {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+/* La tarjeta es un <button>: se abre con el ratón y con el teclado sin inventar nada. */
+.board__card {
+  display: grid;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  /* La franja del agente: lo que de verdad los separa de un vistazo cuando se ven todos juntos. */
+  border-left: 3px solid hsl(var(--agente, 200) 55% 62%);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-raised);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.board__card:hover,
+.board__card:focus-visible {
+  border-color: var(--action);
+}
+
+.board__ref {
+  font-size: var(--text-2xs);
+  color: var(--text-secondary);
+}
+
+.board__title {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
+.board__meta,
+.board__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.board__foot {
+  justify-content: space-between;
+  font-size: var(--text-xs);
+}
+
+.chip--sm {
+  padding: 0 var(--space-2);
+  font-size: var(--text-2xs);
+  cursor: default;
+}
+
+/* Diálogo. `<dialog>` nativo: Esc cierra y el foco queda dentro sin escribir nada. */
+.dialogo {
+  width: min(560px, calc(100vw - var(--space-6)));
+  max-height: calc(100vh - var(--space-8));
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface-raised);
+  color: var(--text-primary);
+}
+
+.dialogo::backdrop {
+  background: rgb(0 0 0 / 60%);
+}
+
+.dialogo__caja {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.dialogo__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.dialogo__title {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.dialogo__head .muted {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+}
+
+.dialogo__body {
+  margin: 0;
+  white-space: pre-line;
+  color: var(--text-secondary);
+}
+
+.dialogo__acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.hilo {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hilo__item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 var(--space-2);
+}
+
+.hilo__autor {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
+.hilo__cuando {
+  font-size: var(--text-xs);
+}
+
+.hilo__texto {
+  grid-column: 1 / -1;
+  margin: var(--space-1) 0 0;
+  white-space: pre-line;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}

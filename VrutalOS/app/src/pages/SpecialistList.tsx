@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { Link } from 'react-router';
-import { listMySpecialistIds, listSpecialists } from '../lib/api/specialists';
+import { listVisibleSpecialists } from '../lib/api/specialists';
 import { useAsyncData } from '../lib/hooks/useAsyncData';
 import {
   AUTONOMY_LABEL,
@@ -15,18 +15,8 @@ import { PageHead } from '../components/PageHead';
 import { ErrorNotice, LoadingState } from '../components/StatusViews';
 import '../styles/pages/specialists.css';
 
-/** Los especialistas que esta persona puede usar: el Admin ve todos; el resto, los que se le han habilitado. */
-async function loadVisibleSpecialists(profile: Profile, signal: AbortSignal): Promise<Specialist[]> {
-  const [all, mine] = await Promise.all([
-    listSpecialists(signal),
-    profile.role === 'client_admin' ? Promise.resolve(null) : listMySpecialistIds(profile.id, signal),
-  ]);
-  // Solo UX: el servidor deja leer todos los especialistas; esto filtra lo que se muestra.
-  return mine === null ? all : all.filter((s) => mine.includes(s.id));
-}
-
 export function SpecialistList({ profile }: { profile: Profile }) {
-  const load = useCallback((signal: AbortSignal) => loadVisibleSpecialists(profile, signal), [profile]);
+  const load = useCallback((signal: AbortSignal) => listVisibleSpecialists(profile, signal), [profile]);
   const { state, reload } = useAsyncData(load);
 
   return (

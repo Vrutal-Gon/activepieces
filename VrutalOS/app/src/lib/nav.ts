@@ -29,6 +29,7 @@ export const WORKSPACES: Record<Workspace, { label: string; hint: string; icon: 
         label: 'Trabajo',
         items: [
           { to: '/', label: 'Inicio', icon: '◉', end: true },
+          { to: '/tablero', label: 'Tablero', icon: '▥' },
           { to: '/conversaciones', label: 'Conversaciones', icon: '✉' },
           { to: '/especialistas', label: 'Especialistas', icon: '◆' },
           { to: '/aprobaciones', label: 'Aprobaciones', icon: '◷' },

@@ -1,6 +1,6 @@
 import { supabase } from '../supabaseClient';
 import { isObj, isStr } from '../guards';
-import type { Specialist } from '../types';
+import type { Profile, Specialist } from '../types';
 import { ApiError } from './client';
 
 // El catálogo de tareas de Vrutal (catalog_flow_ro…) NO se lee desde la app: es propiedad de Vrutal y el
@@ -68,4 +68,17 @@ export async function listMySpecialistIds(userId: string, signal: AbortSignal): 
     throw new ApiError('bad_shape', 'Respuesta inesperada de user_specialist_access');
   }
   return rows.map((r) => r.specialist_id as string);
+}
+
+/**
+ * Los especialistas que esta persona puede usar: el Admin ve todos; el resto, los que se le
+ * han habilitado. Solo UX — el servidor deja leer todos los especialistas, esto filtra lo que
+ * se muestra. Lo comparten la lista de Especialistas y el Tablero.
+ */
+export async function listVisibleSpecialists(profile: Profile, signal: AbortSignal): Promise<Specialist[]> {
+  const [all, mine] = await Promise.all([
+    listSpecialists(signal),
+    profile.role === 'client_admin' ? Promise.resolve(null) : listMySpecialistIds(profile.id, signal),
+  ]);
+  return mine === null ? all : all.filter((s) => mine.includes(s.id));
 }

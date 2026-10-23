@@ -8,6 +8,7 @@ import { PENDING_SECTIONS } from './lib/sections';
 import type { Profile } from './lib/types';
 import { AppShell } from './components/AppShell';
 import { AccessPage } from './pages/AccessPage';
+import { BoardPage } from './pages/BoardPage';
 import { ApprovalsPage } from './pages/ApprovalsPage';
 import { IntegrationsPage } from './pages/IntegrationsPage';
 import { UsagePage } from './pages/UsagePage';
@@ -134,6 +135,7 @@ function Layouts({ profile, email, onSignOut }: LayoutsProps) {
         {isAdmin && <Route path="admin/consumo" element={<UsagePage />} />}
         {isAdmin && <Route path="soporte" element={<SupportPage />} />}
         {canEditScope(profile.role) && <Route path="negocio" element={<NegocioPage profile={profile} />} />}
+        <Route path="tablero" element={<BoardPage profile={profile} />} />
         <Route path="aprobaciones" element={<ApprovalsPage profile={profile} />} />
         <Route path="especialistas" element={<SpecialistList profile={profile} />} />
         <Route path="especialistas/:id" element={<SpecialistDetail profile={profile} />} />

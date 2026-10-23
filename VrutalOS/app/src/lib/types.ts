@@ -200,3 +200,51 @@ export interface MktSemStrategy {
   notes: string | null;
   source: MktSource;
 }
+
+// ── Tablero (espejo de Kaneo) ───────────────────────────────────────────────
+/** Las columnas las define Kaneo; el `status` de una tarjeta es el `slug` de su columna. */
+export interface BoardColumn {
+  slug: string;
+  name: string;
+  position: number;
+  is_final: boolean;
+}
+
+export type BoardPriority = 'no-priority' | 'low' | 'medium' | 'high' | 'urgent';
+/** `cliente` = la pidió alguien del cliente desde esta pantalla. */
+export type BoardOrigin = 'vrutal' | 'cliente';
+
+export interface BoardCard {
+  id: string;
+  project_id: string;
+  /** De qué agente es la tarjeta: el tablero los muestra todos juntos. */
+  specialist_id: string;
+  /** Se enseña como <slug del proyecto>-<number>, p. ej. MKT-12. */
+  number: number | null;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: BoardPriority | null;
+  /** Un nombre, nunca un correo: el cliente no recibe el directorio del equipo de Vrutal. */
+  assignee_name: string | null;
+  labels: string[];
+  due_date: string | null;
+  position: number | null;
+  origin: BoardOrigin;
+}
+
+export interface BoardComment {
+  id: string;
+  author_name: string;
+  body: string;
+  kaneo_created_at: string | null;
+}
+
+export interface Board {
+  /** Prefijo de la referencia corta, por proyecto. */
+  projectSlug: Record<string, string>;
+  /** Agentes que de verdad tienen tablero. A los demás no se les puede pedir una tarea. */
+  withBoard: string[];
+  columns: BoardColumn[];
+  cards: BoardCard[];
+}

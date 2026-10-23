@@ -36,6 +36,7 @@ const WORKSPACES = {
     groups: [
       { label: 'Trabajo', items: [
         { id: 'inicio', label: 'Inicio', icon: '◉' },
+        { id: 'tablero', label: 'Tablero', icon: '▥' },
         { id: 'conversaciones', label: 'Conversaciones', icon: '✉' },
         { id: 'especialistas', label: 'Especialistas', icon: '◆' },
         { id: 'aprobaciones', label: 'Aprobaciones', icon: '◷', badge: 3 },
@@ -71,7 +72,67 @@ const PENDING = {
   auditoria: ['Auditoría', 'Tabla audit_log (ya existe, 0 filas). Solo lectura: quién hizo qué y cuándo, incluido el acceso de soporte de Vrutal.'],
 };
 
-const state = { layout: 'usuario', workspace: 'trabajo', screen: 'inicio', convo: 0, navOpen: false, ctab: 'publicaciones', calView: 'calendario', modal: null, pausedPosts: new Set(), draftDecision: {}, overrides: {}, chatAnchor: null, chatDecision: {}, manualPostIdx: new Set(), floatingChatOpen: false, draftPublished: new Set() };
+const state = { layout: 'usuario', workspace: 'trabajo', screen: 'inicio', convo: 0, navOpen: false, ctab: 'publicaciones', calView: 'calendario', modal: null, pausedPosts: new Set(), draftDecision: {}, overrides: {}, chatAnchor: null, chatDecision: {}, manualPostIdx: new Set(), floatingChatOpen: false, draftPublished: new Set(), boardFiltro: new Set() };
+
+/* Tablero (espejo de Kaneo). Las columnas las define Kaneo y aquí solo se pintan; el `status` de
+   cada tarjeta es el slug de su columna. Una tarjeta con la etiqueta `interno` NO llega a este
+   espejo: la filtra board-sync, así que en esta pantalla no hay nada que esconder.
+   Fila de tarjeta: [id, nº, título, columna, prioridad, quién, etiquetas, origen, descripción] */
+const BOARD = {
+  // [clave, nombre, prefijo de la referencia, tono]. El tono sale del `job_role_key`, no de la
+  // posición: contratar uno nuevo no le cambia el color a los demás.
+  especialistas: [
+    ['content_promotion', 'Contenido y Promoción', 'MKT', 0],
+    ['search_marketing', 'SEO y SEM', 'SEO', 2],
+    ['marketing_analyst', 'Análisis de Mercado', 'ANL', 3],
+  ],
+  columnas: [
+    ['por-hacer', 'Por hacer', false],
+    ['en-curso', 'En curso', false],
+    ['revision', 'En revisión', false],
+    ['hecho', 'Hecho', true],
+  ],
+  tarjetas: {
+    content_promotion: [
+      ['t1', 12, 'Calendario editorial de noviembre', 'en-curso', 'high', 'Marta (Vrutal)', ['calendario'], 'vrutal',
+        'Cuatro semanas de temas y formatos a partir del ICP y de lo que rindió en octubre. Sale a Aprobaciones cuando esté.'],
+      ['t2', 11, 'Brief de la pieza «Clima laboral y turnos»', 'revision', 'medium', 'Marta (Vrutal)', ['contenido'], 'vrutal',
+        'ContentBrief listo; esperando que el especialista cierre el ángulo antes de redactar.'],
+      ['t3', 10, 'Adaptar la pieza aprobada a LinkedIn y X', 'por-hacer', 'medium', null, ['contenido', 'redes'], 'vrutal',
+        'Una versión por canal, con el texto ya aprobado. No se publica nada sin tu visto bueno.'],
+      ['t4', 9, 'Revisar el tono de los últimos tres posts', 'por-hacer', 'low', null, [], 'cliente',
+        'Nos han comentado que suenan algo fríos.\n\n—\nPedido por Gonzalo desde VrutalOS.'],
+      ['t5', 7, 'Foto semanal de métricas', 'hecho', 'no-priority', 'Marta (Vrutal)', ['métricas'], 'vrutal',
+        'Entregada el lunes. El detalle está en Reportes.'],
+    ],
+    search_marketing: [
+      ['s1', 5, 'Keywords por dolor del ICP', 'hecho', 'medium', 'Luis (Vrutal)', ['keywords'], 'vrutal',
+        '34 keywords entregadas; 12 aprobadas por ti.'],
+      ['s2', 6, 'Asignar keywords a páginas', 'en-curso', 'high', 'Luis (Vrutal)', ['keywords'], 'vrutal',
+        'Una keyword por página, sin canibalizar. Pendiente de las dos landings nuevas.'],
+      ['s3', 8, 'Auditoría técnica del sitio', 'por-hacer', 'medium', null, [], 'vrutal', 'Rastreo completo y lista de arreglos por impacto.'],
+    ],
+    marketing_analyst: [
+      ['a1', 3, 'Ficha comparativa de competidores', 'revision', 'medium', 'Luis (Vrutal)', ['competencia'], 'vrutal',
+        'Qué dicen, a quién se dirigen y dónde se diferencian. Pendiente de tu repaso antes de darla por buena.'],
+      ['a2', 4, 'Puntuar los leads de la semana', 'en-curso', 'high', 'Luis (Vrutal)', [], 'vrutal',
+        'Propone un estado para cada uno; lo decides tú en Aprobaciones.'],
+    ],
+  },
+  comentarios: {
+    t1: [['Marta (Vrutal)', 'Primera versión con 12 piezas. Falta encajar el lanzamiento.', 'hace 2 h']],
+    t2: [
+      ['Marta (Vrutal)', 'El ángulo que mejor encaja es el de los turnos rotativos.', 'ayer'],
+      ['Gonzalo', 'De acuerdo, pero sin mencionar al competidor por su nombre.', 'hace 4 h'],
+    ],
+    t4: [['Gonzalo', 'Sobre todo el del martes.', 'hace 1 h']],
+  },
+};
+/** Todas las tarjetas del tablero, de todos los agentes, con su agente al lado. */
+function boardTarjetas() {
+  return BOARD.especialistas.flatMap((espec) => (BOARD.tarjetas[espec[0]] || []).map((t) => ({ t, espec })));
+}
+const PRIORIDAD = { urgent: ['Urgente', 'bad'], high: ['Alta', 'warn'], medium: ['Media', ''], low: ['Baja', ''], 'no-priority': ['', ''] };
 
 /* Datos de ejemplo del especialista Contenido y Promoción (compartidos entre la pantalla y los modales).
    El último elemento de cada fila de borradores/publicaciones/metricDetalle (#tema:…, #formato:…) es
@@ -279,6 +340,53 @@ function wireCharts() {
 }
 
 const SCREENS = {
+  /* Tablero: lo que el cliente NO podía ver hasta ahora — en qué se está trabajando.
+     Se ven TODOS los agentes a la vez; el agente es un FILTRO de la pantalla, no una pantalla
+     distinta, y cada tarjeta lleva su color y su nombre para no confundirlos.
+     Es solo lectura salvo dos cosas: pedir una tarea nueva y comentar. Mover una tarjeta de
+     columna no es del cliente: el estado del trabajo lo fija Vrutal. */
+  tablero: () => {
+    const todas = boardTarjetas();
+    const visibles = state.boardFiltro.size === 0 ? todas : todas.filter((t) => state.boardFiltro.has(t.espec[0]));
+    return head('Mi trabajo', 'Tablero', `<button class="btn btn--primary" data-new-card>Pedir una tarea</button>`) + `
+    <p class="lead">En qué está trabajando tu equipo ahora mismo, todos los agentes juntos. Pulsa uno para ver solo lo suyo.</p>
+    <div class="board__specs" role="group" aria-label="Filtrar por agente">
+      <button type="button" class="chip" aria-pressed="${state.boardFiltro.size === 0}" data-board-todos>Todos<span class="chip__count">${todas.length}</span></button>
+      ${BOARD.especialistas.map((e) => `
+      <button type="button" class="chip agente agente--${e[3]}" aria-pressed="${state.boardFiltro.has(e[0])}" data-board-spec="${e[0]}">
+        <span class="agente__punto" aria-hidden="true"></span>${esc(e[1])}<span class="chip__count">${todas.filter((t) => t.espec[0] === e[0]).length}</span>
+      </button>`).join('')}
+    </div>
+    ${todas.length === 0
+      ? `<div class="empty-state"><p>Todavía no hay tablero.</p></div>`
+      : `<div class="board">${BOARD.columnas.map((col) => {
+          const enCol = visibles.filter((x) => x.t[3] === col[0]);
+          return `<section class="board__col">
+            <div class="board__colhead"><span class="eyebrow">${esc(col[1])}</span><span class="board__count">${enCol.length}</span></div>
+            ${enCol.length === 0 ? `<p class="board__vacia">—</p>` : enCol.map(({ t, espec }) => {
+              const [prio, prioTono] = PRIORIDAD[t[4]] || ['', ''];
+              const coment = (BOARD.comentarios[t[0]] || []).length;
+              return `<article class="board__card agente agente--${espec[3]}" tabindex="0" role="button" data-card="${t[0]}">
+                <div class="board__quien">
+                  <span class="board__ref mono">${espec[2]}-${t[1]}</span>
+                  <span class="board__agente"><span class="agente__punto" aria-hidden="true"></span>${esc(espec[1])}</span>
+                </div>
+                <p class="board__title">${esc(t[2])}</p>
+                <div class="board__meta">
+                  ${prio ? pill(prio, prioTono) : ''}
+                  ${t[7] === 'cliente' ? pill('Pedida por ti', 'pending') : ''}
+                  ${t[6].map((l) => `<span class="chip chip--sm">${esc(l)}</span>`).join('')}
+                </div>
+                <div class="board__foot">
+                  <span class="muted small">${t[5] ? esc(t[5]) : 'Sin asignar'}</span>
+                  ${coment ? `<span class="muted small">${coment} ${coment === 1 ? 'comentario' : 'comentarios'}</span>` : ''}
+                </div>
+              </article>`;
+            }).join('')}
+          </section>`;
+        }).join('')}</div>`}
+    ${src('board_column · board_card · board_comment — espejo de Kaneo, refrescado cada 5 min (RLS: can_access_specialist). El cliente nunca ve la interfaz de Kaneo')}`;
+  },
   inicio: () => head('Mi trabajo', `Buenos días, ${PEOPLE[state.layout].name.split(' ')[0]}`, `<button class="btn btn--primary" data-go="conversaciones">Nueva conversación</button>`) + `
     <div class="stats">
       <div class="stat"><span class="eyebrow">Esperan tu decisión</span><p class="stat__value">3</p><span class="stat__detail">aprobaciones</span></div>
@@ -585,6 +693,42 @@ function renderModal() {
       </tbody></table></div>
     </div></div>`;
   }
+  if (m.type === 'card') {
+    const fila = boardTarjetas().find((x) => x.t[0] === m.id);
+    if (!fila) return '';
+    const { t, espec } = fila;
+    const col = BOARD.columnas.find((c) => c[0] === t[3]);
+    const [prio, prioTono] = PRIORIDAD[t[4]] || ['', ''];
+    const hilo = BOARD.comentarios[t[0]] || [];
+    return `<div class="modal-scrim"><div class="modal" role="dialog" aria-modal="true">
+      <div class="modal__head agente agente--${espec[3]}"><div><h2 class="modal__title">${esc(t[2])}</h2>
+        <span class="muted small"><span class="agente__punto" aria-hidden="true"></span>${esc(espec[1])} · <span class="mono">${espec[2]}-${t[1]}</span> · ${esc(col ? col[1] : t[3])}${t[5] ? ' · ' + esc(t[5]) : ''}</span></div>
+        <button class="icon-button" data-close-modal aria-label="Cerrar">✕</button></div>
+      <div class="board__meta">${prio ? pill(prio, prioTono) : ''}${t[7] === 'cliente' ? pill('Pedida por ti', 'pending') : ''}${t[6].map((l) => `<span class="chip chip--sm">${esc(l)}</span>`).join('')}</div>
+      <p class="modal__body" style="white-space:pre-line">${esc(t[8])}</p>
+      <div><h3 class="muted small" style="margin:0 0 var(--space-2)">Conversación</h3>
+        ${hilo.length === 0 ? `<p class="muted small">Todavía no hay comentarios.</p>` : `<ul class="attention">${hilo.map((c) => `
+          <li class="attention__item"><div><span class="attention__title">${esc(c[0])}</span><span class="attention__detail">${esc(c[1])}</span><span class="muted small">${esc(c[2])}</span></div></li>`).join('')}</ul>`}
+      </div>
+      <div class="modal__field"><label for="modal-card-comment">Comentar</label>
+        <textarea id="modal-card-comment" class="text-input" rows="3" placeholder="Lo que quieras decirle al equipo sobre esta tarea"></textarea></div>
+      <div class="row row--end"><button class="btn btn--ghost btn--sm" data-close-modal>Cerrar</button><button class="btn btn--primary btn--sm" data-send-comment="${t[0]}">Enviar comentario</button></div>
+    </div></div>`;
+  }
+  if (m.type === 'newcard') {
+    const porDefecto = state.boardFiltro.size === 1 ? [...state.boardFiltro][0] : BOARD.especialistas[0][0];
+    return `<div class="modal-scrim"><div class="modal" role="dialog" aria-modal="true">
+      <div class="modal__head"><h2 class="modal__title">Pedir una tarea</h2><button class="icon-button" data-close-modal aria-label="Cerrar">✕</button></div>
+      <div class="modal__field"><label for="modal-card-agente">A quién se lo pides</label>
+        <select id="modal-card-agente" class="text-input">${BOARD.especialistas.map((e) => `<option value="${e[0]}" ${e[0] === porDefecto ? 'selected' : ''}>${esc(e[1])}</option>`).join('')}</select></div>
+      <div class="modal__field"><label for="modal-card-title">Qué necesitas</label>
+        <input id="modal-card-title" class="text-input" placeholder="Revisar el tono de los últimos posts" /></div>
+      <div class="modal__field"><label for="modal-card-desc">Detalle (opcional)</label>
+        <textarea id="modal-card-desc" class="text-input" rows="4" placeholder="Lo que haga falta para entenderlo sin preguntarte"></textarea></div>
+      <p class="muted small">Entra en «Por hacer» de su tablero, marcada como pedida por ti. El equipo decide cuándo la coge y en qué columna la pone.</p>
+      <div class="row row--end"><button class="btn btn--ghost btn--sm" data-close-modal>Cancelar</button><button class="btn btn--primary btn--sm" data-save-card>Pedirla</button></div>
+    </div></div>`;
+  }
   if (m.type === 'edit') {
     const base = m.source === 'cal'
       ? { title: CP_DATA.calendario[m.idx][2], when: CP_DATA.calendario[m.idx][1], channel: CP_DATA.calendario[m.idx][3] }
@@ -620,7 +764,7 @@ function renderModal() {
 /* ---------- Eventos ---------- */
 document.addEventListener('click', (e) => {
   if (e.target.classList && e.target.classList.contains('modal-scrim')) { state.modal = null; render(); return; }
-  const t = e.target.closest('[data-layout],[data-ws],[data-screen],[data-go],[data-convo],[data-ctab],[data-calview],[data-edit],[data-draft],[data-metric],[data-pause],[data-approve-draft],[data-reject-draft],[data-save-draft],[data-save-edit],[data-close-modal],[data-chat],[data-chat-approve],[data-chat-reject],[data-new-post],[data-save-create],[data-open-chat],[data-close-chat],[data-toggle-nav],[data-close-nav]');
+  const t = e.target.closest('[data-layout],[data-ws],[data-screen],[data-go],[data-convo],[data-ctab],[data-calview],[data-edit],[data-draft],[data-metric],[data-pause],[data-approve-draft],[data-reject-draft],[data-save-draft],[data-save-edit],[data-close-modal],[data-chat],[data-chat-approve],[data-chat-reject],[data-new-post],[data-save-create],[data-open-chat],[data-close-chat],[data-toggle-nav],[data-close-nav],[data-board-spec],[data-board-todos],[data-card],[data-new-card],[data-save-card],[data-send-comment]');
   if (!t) return;
   e.preventDefault();
   if (t.dataset.layout) { state.layout = t.dataset.layout; state.workspace = 'trabajo'; state.screen = 'inicio';
@@ -657,6 +801,31 @@ document.addEventListener('click', (e) => {
     const when = formatWhen($('#modal-new-date').value, $('#modal-new-time').value);
     state.manualPostIdx.add(CP_DATA.publicaciones.length);
     CP_DATA.publicaciones.push([body, channel, when, 'warn', 'Programado', false]);
+    state.modal = null;
+  }
+  else if (t.dataset.boardSpec) {
+    const k = t.dataset.boardSpec;
+    state.boardFiltro.has(k) ? state.boardFiltro.delete(k) : state.boardFiltro.add(k);
+  }
+  else if (t.hasAttribute("data-board-todos")) { state.boardFiltro.clear(); }
+  else if (t.dataset.card) { state.modal = { type: 'card', id: t.dataset.card }; }
+  else if (t.hasAttribute('data-new-card')) { state.modal = { type: 'newcard' }; }
+  else if (t.hasAttribute('data-save-card')) {
+    // Lo que hará board-write: la tarjeta nace en la PRIMERA columna y marcada como del cliente.
+    const clave = $('#modal-card-agente').value;
+    const espec = BOARD.especialistas.find((x) => x[0] === clave) || BOARD.especialistas[0];
+    const titulo = $('#modal-card-title').value.trim() || 'Tarea sin título';
+    const detalle = $('#modal-card-desc').value.trim();
+    const lista = BOARD.tarjetas[espec[0]] || (BOARD.tarjetas[espec[0]] = []);
+    const siguiente = Math.max(0, ...lista.map((c) => c[1])) + 1;
+    lista.push(['c' + siguiente, siguiente, titulo, BOARD.columnas[0][0], 'no-priority', null, [], 'cliente',
+      (detalle ? detalle + '\n\n—\n' : '') + `Pedido por ${PEOPLE[state.layout].name} desde VrutalOS.`]);
+    state.modal = null;
+  }
+  else if (t.dataset.sendComment) {
+    const id = t.dataset.sendComment;
+    const texto = $('#modal-card-comment').value.trim();
+    if (texto) (BOARD.comentarios[id] = BOARD.comentarios[id] || []).push([PEOPLE[state.layout].name, texto, 'ahora']);
     state.modal = null;
   }
   else if (t.hasAttribute('data-close-modal')) { state.modal = null; }
