@@ -22,7 +22,7 @@ Nada de la empresa va en el código: nombre y proyecto Supabase salen de `.env.l
 
 - **Fase 0 · diseño** — aprobado en principio (layouts usuario y admin).
 - **Fase 1 · shell** — hecho: login y recuperación de contraseña, perfil y rol (`profiles`), shell con los dos layouts, rutas de admin protegidas en UX. Todas las pantallas son «próximamente».
-- **Fase 2 · pantallas** — en curso, una a una. Hecho: Especialistas (lista y ficha con «Su trabajo»: entregables por pestañas con aprobar/rechazar; necesita `2026-10-06_work_items.sql`), Equipo, Accesos, Integraciones, Consumo y Aprobaciones (todo el SQL necesario está aplicado en Vrutal-labs; ver `db/plantillas/cambios/README.md`). Resto, «próximamente». Equipo incluye «Invitar persona» (necesita la función `team-invite` desplegada).
+- **Fase 2 · pantallas** — en curso, una a una. Hecho: Especialistas (lista y ficha con «Su trabajo»: entregables por pestañas con aprobar/rechazar; necesita `2026-10-06_work_items.sql`), Equipo, Accesos, Integraciones, Consumo y Aprobaciones (todo el SQL necesario está aplicado en Vrutal-labs; ver `db/plantillas/cambios/README.md`). Resto, «próximamente». Equipo incluye «Invitar persona» (necesita la función `team-invite` desplegada). **Tablero** (2026-10-23): el cliente ve en qué se está trabajando, puede pedir una tarea y comentar; lee el espejo de Kaneo (`board_*`, cambio `2026-10-22_tablero_kaneo.sql`, funciones `board-sync`/`board-write`) — pendiente de encender, ver `docs/arquitectura/tablero_kaneo.md`.
 - **Pendiente:** 2FA, búsqueda y notificaciones.
 
 ## Decisiones en vigor

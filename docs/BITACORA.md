@@ -300,6 +300,8 @@ Un cliente = una instancia Docker (`infra/instance/`). Qué corre y por qué:
 | **Postiz** | Publicar en redes sociales | Perfil `social`. El cliente **nunca ve su interfaz** |
 | **Temporal** + Elasticsearch + Postgres | Programar publicaciones de Postiz | **No es nuestro**: lo arrastra Postiz (`depends_on` + `TEMPORAL_ADDRESS`). Quitarlo rompe la programación |
 | `postiz_agent` | Reinicia Postiz cuando cambian las credenciales | **Nunca ve una credencial**: solo compara una huella |
+| **Kaneo** 2.46.2 | **El tablero**: donde el equipo de Vrutal gestiona el trabajo de este cliente | Perfil `tareas`. El cliente **nunca ve su interfaz** (igual que Postiz): la ve espejada en VrutalOS → Tablero |
+| `kaneo_postgres` | Su estado | |
 | `qdrant`, `memory_postgres` | Vectores y memoria | |
 | `docker_socket_proxy` | Acceso acotado al socket de Docker | |
 | **Traefik** (`infra/edge/`) | Entrada única, uno por VPS | |
@@ -313,10 +315,11 @@ sostenida de LAB08 lo pida — lo decide una métrica, no el número de cliente.
 gestionado por defecto** (**D-09**): da Auth, RLS, backups, Vault y Storage «gratis»;
 self-hosted queda como premium futuro porque obliga a construir y mantener todo eso ×N clientes.
 
-**Memoria (2026-10-14).** Los 16 servicios llevan `mem_limit` en `docker-compose.yml`. Se puso
+**Memoria (2026-10-14).** Los servicios llevan `mem_limit` en `docker-compose.yml`. Se puso
 tras colgarse el demonio de Docker Desktop dos veces el mismo día: sin cota, un contenedor
 desbocado **se lleva el demonio por delante** en lugar de morir él solo. Medido ese día: núcleo
-~1,1 GB, perfil `social` ~2,6 GB, total ~3,7 GB.
+~1,1 GB, perfil `social` ~2,6 GB, total ~3,7 GB. El perfil `tareas` (2026-10-22) añade ~0,75 GB
+(Kaneo 512 m + su Postgres 256 m).
 
 ---
 
@@ -346,6 +349,8 @@ Function en vez de por el front.
 | `AP_INTEGRATION_TOKEN` (`X-AP-Token`) | Flujos de Activepieces → VrutalOS | `approval-create`, `approval-result`, `integration-get-key` | El consumidor es **el mismo** (los flujos de esta instancia), por eso se reutiliza entre esas tres |
 | `SOCIAL_APP_TOKEN` | Contenedor de Postiz y su agente → `social-app-env` | Servir credenciales de apps OAuth al arrancar | **Otro consumidor** → secreto propio. No se reutiliza el de arriba |
 | `WEBHOOK_SHARED_SECRET` | Database Webhook → `integration-social-notify` | Avisar de cambios de estado | |
+| `board_sync_token` + `BOARD_SYNC_TOKEN` | pg_cron → `board-sync` | Autenticar el espejo del tablero (cabecera `x-sync-token`) | **Otro consumidor** que `sync_cron_token`, y además vive en otra base: aquel está en Vrutal1st, este en la del cliente |
+| `KANEO_API_KEY` | `board-sync` y `board-write` → Kaneo | Leer y escribir el tablero de esta instancia | **Es de Vrutal, no del cliente**: no pasa por Integraciones ni por el Vault del cliente. Misma pregunta que resolvió la clave de Postiz (migración `025`): ¿de quién es la herramienta? |
 | `APP_ORIGINS` / `PANEL_ORIGINS` | Todas las funciones con sesión | Lista blanca de CORS | Sin él, la función **rechaza todo** («Origen no permitido») |
 | `ALLOWED_EMAIL_DOMAINS` | `team-invite` | Limitar a dominios que fija Vrutal | **Deuda:** solo vive en la función; un usuario dentro podría cambiarse el correo desde Auth |
 | `AP_RESUME_URL_PREFIX` | `approval-create` | Validar que el enlace apunta a la instancia esperada | **Anti-SSRF**: sin él, un flujo manipulado haría que Vrutal llame a cualquier URL |
@@ -444,6 +449,82 @@ WhatsApp como el que falta.
 
 ---
 
+## 9 bis. Tablero: cómo el cliente ve en qué se está trabajando (2026-10-22)
+
+Hasta aquí el cliente veía **resultados**: entregables (`work_item`) y decisiones pendientes
+(`approval_requests`). Lo que se estaba haciendo **ahora** no lo veía nadie fuera de Vrutal.
+Eso lo cubre el Tablero.
+
+La herramienta es **Kaneo** (MIT, `usekaneo/kaneo`): React + Hono + Postgres, API REST con
+OpenAPI, API key por cabecera `x-api-key`, modelo workspace → proyecto → tarea con columnas,
+etiquetas y comentarios. Corre **una instancia por cliente**, en su propio Docker (perfil
+`tareas`), como Activepieces y Postiz.
+
+```
+Kaneo (instancia del cliente)        ← aquí trabaja el equipo de Vrutal
+   │  pg_cron «board-sync» cada 5 min, token del Vault, cabecera x-sync-token
+   ▼
+Edge Function board-sync  ──GET x-api-key──►  /api/{column,task,comment}
+   │  upsert; filtra la etiqueta «interno»; borra lo que Kaneo ya no devuelve
+   ▼
+board_project · board_column · board_card · board_comment   (espejo, RLS, SOLO select)
+   ▼
+VrutalOS → Tablero        ── pedir tarea / comentar ──►  board-write ──► Kaneo ──► espejo
+```
+
+**Las tres decisiones que lo explican:**
+
+1. **Espejo, no consulta en vivo.** El navegador habla solo con su Supabase, con RLS. Si la
+   pantalla preguntara a Kaneo en cada carga, cada carga dependería de que Kaneo esté arriba y
+   habría que llevar una clave por el camino. Misma forma que el sync de catálogo (**D-06**).
+2. **El cliente no ve la interfaz de Kaneo.** Lo que sale a internet es solo
+   `/api/{project,column,task,comment}` por Traefik — ni la interfaz ni `/api/auth`. Es la
+   lección de Postiz, dicha otra vez.
+3. **Escribir va por función, no por tabla.** `authenticated` solo tiene SELECT sobre las
+   cuatro tablas. Pedir una tarea y comentar pasan por `board-write`, que autoriza con
+   `board_authorize()` evaluada con la sesión de quien llama, escribe primero en **Kaneo** (la
+   fuente) y después refleja la fila. Al revés, un fallo de Kaneo dejaría al cliente viendo una
+   tarjeta que el equipo no tiene.
+
+**Mover una tarjeta de columna no es del cliente**: el estado del trabajo lo fija Vrutal. El
+cliente propone y comenta.
+
+**Y se ven todos los agentes juntos** (2026-10-23, a petición del founder): el agente es un
+**filtro** de la pantalla, no una pantalla distinta. Se mira el tablero para saber en qué anda
+el equipo entero, no para auditar a uno. Cada tarjeta lleva la franja de color y el nombre de su
+agente para que no se confundan, con el tono derivado del `job_role_key` — si saliera de la
+posición en la lista, contratar un especialista le cambiaría el color a todos los demás.
+
+**Trampas encontradas al construirlo, las tres en el código de Kaneo 2.46.2:**
+
+- Sus identificadores son **`text`, no `uuid`** (`text("id")` en su esquema). El espejo con
+  `uuid` habría roto el upsert en la primera pasada.
+- Su respuesta de tablero **no trae `updatedAt`**, así que no hay «dame lo que cambió desde»:
+  cada pasada es una foto completa por proyecto. A esta escala sobra.
+- Su ruta de **lectura** de comentarios (`comment/controllers/get-comments.ts`) ignora
+  `externalUserName` y devuelve el nombre del usuario de la API key. Por eso los comentarios
+  entran en el espejo con `ignoreDuplicates`: si no, el comentario de una persona del cliente
+  pasaría a figurar como «VrutalOS» en la siguiente pasada. **Comprobado en vivo el 2026-10-23**:
+  se escribe `externalUserName: "Gonzalo"`, y la relectura devuelve `"Equipo Vrutal"`.
+- **Y otra del panel, tampoco de Kaneo:** un secreto pegado en Edge Functions se lleva un salto
+  de línea o un espacio, y la comparación exacta falla **en silencio**. El 2026-10-23 los tres
+  secretos del tablero llegaron así: `BOARD_SYNC_TOKEN` devolvía 401 con el token correcto, y
+  `KANEO_API_URL` llegaba con un espacio detrás. Las dos funciones hacen `trim()` de los tres
+  desde entonces. **Y el que se pega tiene que ser el valor, no la plantilla**: `KANEO_API_URL`
+  estaba puesto literalmente como `https://<slug>-tareas.<dominio>`.
+- **Y una del entorno, no de Kaneo:** mandar un JSON con acentos desde Git Bash con `curl -d`
+  los corrompe (llegan como `U+FFFD`). Los nombres de los proyectos nacieron rotos y hubo que
+  rehacerlos enviando el cuerpo desde un fichero UTF-8. Para cualquier alta por API desde esta
+  máquina: el cuerpo, en fichero.
+
+**Lo que falta para que funcione** (ver `db/plantillas/cambios/README.md`): aplicar la
+migración, activar `pg_cron` y `pg_net` en el proyecto del cliente (comprobado el 2026-10-22:
+**no están**), desplegar las dos funciones con su `verify_jwt`, y el alta manual en Kaneo
+(cuenta del staff, workspace, un proyecto por especialista, API key) con su fila en
+`board_project`. Diagrama: `docs/arquitectura/tablero_kaneo.drawio`.
+
+---
+
 ## 10. Cronología (la navegación)
 
 | Fecha | Hito | Por qué importa |
@@ -460,6 +541,7 @@ WhatsApp como el que falta.
 | 11 oct | **029**: el schema `deployment` nunca se había creado | Prerrequisito oculto de la 022 |
 | 13 oct | **Aprobaciones en VrutalOS**; **031** + grant: el sync crea especialistas; auditoría objeto por objeto | Aparecen **dos cambios sin aplicar** que el registro ya marcaba |
 | **14 oct** | `mem_limit` en los 16 servicios; git ordenado (7 commits); corregida la guía de aprobación de F2; esta bitácora | Se paga la deuda de infraestructura y de historial |
+| **22–23 oct** | **Tablero**: Kaneo en la instancia del cliente, espejo `board_*` con su cron, `board-sync`/`board-write`, pantalla y diseño | El cliente deja de ver solo resultados y ve **en qué se está trabajando** |
 
 ---
 
@@ -477,6 +559,16 @@ WhatsApp como el que falta.
   duplicados de lo que vive en la base de cada cliente: crearlas **contradiría D-01 y D-02**.
   La `002` se escribió antes de que «un Supabase por cliente» fuera firme.
 - **Plantilla de cliente desfasada** (10 tablas de 20).
+- **Tablero a medias** (2026-10-23). Encendido: perfil `tareas` levantado, Kaneo con su
+  workspace, tres proyectos (MKT, SEO, ANL) con las columnas en español y la API key `VrutalOS`;
+  migración aplicada y verificada objeto por objeto; `pg_cron` y `pg_net` instaladas; los tres
+  proyectos y sus columnas sembrados en el espejo. **Queda**: poner los tres secretos de Edge
+  Function (`BOARD_SYNC_TOKEN`, `KANEO_API_URL`, `KANEO_API_KEY` — el almacén de secretos no se
+  toca desde aquí), desplegar `board-sync` (`verify_jwt=false`) y `board-write` (`true`), y
+  programar el cron. **El cron no se programa todavía a propósito**: las Edge Functions corren en
+  la nube de Supabase y **no alcanzan el Kaneo de la máquina de desarrollo**, igual que
+  `integration-social-connect` no alcanza al Postiz local. Se valida al pasar al VPS; mientras
+  tanto, programarlo solo llenaría `cron.job_run_details` de fallos de red.
 - **Provisioning del plano de datos**: manual (crear el Supabase del cliente, su VPS, su
   Activepieces).
 - **Autonomía por tarea**: hoy el techo es por especialista. Falta un techo **por tarea**, para

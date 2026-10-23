@@ -44,3 +44,15 @@ Tercera tarjeta en **Especialistas** → `#usuario/especialista_contenido`. Cuat
 - **Aprobar un borrador ahora empuja una fila a Publicaciones** (`state.draftPublished`, evita duplicados si se aprueba dos veces) con el canal/fecha que se hayan editado — cierra el hueco que señaló el usuario ("aquí se deben ver las publicadas y aprobadas").
 - **Publicaciones, acciones con icono según estado**: Publicado → Ver (↗) + Rendimiento (📊, abre el detalle por canal ya existente); Programado → Pausar (⏸) + Editar (✎); Pausado → Reanudar (▶) + Editar; Error → mensaje de reconexión + Editar.
 - Validado con render headless (jsdom): vista por defecto, insignias de canal, cero `data-chat` en filas, flotante abre/cierra y confirma sin navegar de pantalla, pickers de fecha/hora, Borradores edita y aprobar empuja la fila correcta a Publicaciones con los datos editados (confirmado comprobando la fila por posición, no por título — dos filas pueden compartir texto).
+
+## Tablero (2026-10-23)
+
+Pantalla nueva en **Mi trabajo** → `#usuario/tablero`. Es lo que el cliente no podía ver hasta ahora: **en qué se está trabajando**, entre el resultado (entregables, aprobaciones) y la nada.
+
+Columnas en fila con scroll horizontal (en móvil se arrastra; apiladas se pierde justo lo que aporta un tablero, ver las fases a la vez) y la tarjeta con su referencia corta en mono (`MKT-12`), prioridad, etiquetas y quién la lleva.
+
+**Se ven todos los agentes a la vez** (2026-10-23). El cliente quiere saber de un vistazo en qué anda su equipo entero; una pantalla por agente le obligaba a ir uno por uno para enterarse. Para que no se mezclen, cada tarjeta lleva una franja de color y el nombre de su agente, y los chips de arriba pasan a ser **filtros** acumulativos (`Todos` + uno por agente, con su recuento). El color sale del `job_role_key`, no de la posición en la lista: contratar un agente nuevo no le cambia el color a los demás. No son colores de marca —el violeta y el lima significan acción y activo—: van desaturados y en fondo tenue para no competir con un botón. Al pulsarla se abre el modal con la descripción y la conversación, y desde ahí se comenta. En la cabecera, **Pedir una tarea**: entra en la primera columna marcada «Pedida por ti».
+
+Lo que **no** hace, a propósito: mover una tarjeta de columna. El estado del trabajo lo fija Vrutal; el cliente propone y comenta.
+
+Detrás hay [Kaneo](https://github.com/usekaneo/kaneo) (MIT), una instancia por cliente en su propio Docker, donde el equipo de Vrutal gestiona ese trabajo de verdad. **El cliente nunca ve la interfaz de Kaneo** — mismo criterio que con Postiz: lo que se enseña es una pantalla propia alimentada por un espejo en su base (`board_project`/`board_column`/`board_card`/`board_comment`, cambio `db/plantillas/cambios/2026-10-22_tablero_kaneo.sql`), refrescado cada 5 minutos. El trabajo interno de Vrutal se queda fuera con la etiqueta `interno`, que el sync filtra, así que en esta pantalla no hay nada que esconder.
